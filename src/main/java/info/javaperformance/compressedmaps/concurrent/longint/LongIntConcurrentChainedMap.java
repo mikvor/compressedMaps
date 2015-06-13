@@ -279,8 +279,6 @@ public class LongIntConcurrentChainedMap implements IConcurrentLongIntMap
         long bucket = getBucket(tab, idx);
         /*
         We need to copy existing chain into a new buffer, add/update an entry.
-        After that we need to allocate a final byte[] of a minimal possible length, which will be stored back into map.
-        A single element is added via a helper.
          */
 
         //CAS in a loop
@@ -948,9 +946,112 @@ public class LongIntConcurrentChainedMap implements IConcurrentLongIntMap
         return s_updateRes.get();
     }
 
+    /**
+     * All optimistic map changes are returned via this class instances. They contain enough information
+     * to commit/rollback these changes using CAS. An instance is always written and then read by the same
+     * thread, so no synchronization is needed.
+     */
+    private static class UpdateResult
+    {
+        public long chain;
+        public int retValue;
+        public int sizeChange;
+        public Block input;
+        public Block output;
+        public int outputPrevStart;
+
+        public UpdateResult() {
+        }
+
+        public UpdateResult set(long chain, int retValue, int sizeChange, Block input, Block output, int outputPrevStart) {
+            this.chain = chain;
+            this.retValue = retValue;
+            this.sizeChange = sizeChange;
+            this.input = input;
+            this.output = output;
+            this.outputPrevStart = outputPrevStart;
+            return this;
+        }
+
+        @Override
+        public String toString() {
+            return "UpdateResult{" +
+                    "chain=" + chain +
+                    ", retValue=" + retValue +
+                    ", sizeChange=" + sizeChange +
+                    ", input=" + input +
+                    ", output=" + output +
+                    ", outputPrevStart=" + outputPrevStart +
+                    '}';
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////
-    // Size tracking, single point of contention, to be improved
+    // Size tracking
     /////////////////////////////////////////////////////////////////////
+
+    private static class MutableLong
+    {
+        public long v;
+    }
+
+    private final ThreadLocal<MutableLong> s_size = new ThreadLocal<MutableLong>(){
+        @Override
+        protected MutableLong initialValue() {
+            final MutableLong res = new MutableLong();
+            m_sizes.add( res );
+            return res;
+        }
+    };
+    private final CopyOnWriteArrayList<MutableLong> m_sizes = new CopyOnWriteArrayList<>();
+
+    private long calculateSize()
+    {
+        //todo may need volatile read
+        long res = 0;
+        for ( final MutableLong ml : m_sizes )
+        {
+            res += ml.v;
+        }
+        return res;
+    }
+
+    private void addSize( final int delta )
+    {
+        s_size.get().v += delta;
+    }
+
+    public void changeSize( final int delta, final Buffers curBuffers, final int bucketLength )
+    {
+        if ( delta == 0 )
+            return;
+        addSize( delta );
+
+        if ( bucketLength > m_iFillFactor && calculateSize() > curBuffers.threshold )
+        {
+            final long multiplier = m_fillFactor <= 2 ? 2 : m_iFillFactor;
+            int newCapacity = Primes.findNextPrime((long) Math.ceil( multiplier * curBuffers.threshold / m_fillFactor ));
+            //check if we got too close to the max array size, otherwise we will have to make a pretty useless resize when got close to 2G*fillFactor entries
+            if ( newCapacity * 1.5 > Primes.getMaxIntPrime() )
+                newCapacity = Primes.getMaxIntPrime();
+            //this check disables rehashing after a table has reached the maximal size
+            final long newThreshold = newCapacity >= Primes.getMaxIntPrime() ? Long.MAX_VALUE : curBuffers.threshold * multiplier;
+            //Entering rehashing mode. It does not matter which thread changes it, we still have to enter {@code rehash}.
+            //Using if-else here helps with debugging
+            if ( m_data.compareAndSet(curBuffers, new Buffers( m_longAlloc.allocate( newCapacity ), curBuffers.cur,
+                            newThreshold,
+                            curBuffers.version + 1, //switching to rehashing mode
+                            curBuffers.nextStableVersion //next stable version does not change at this moment
+                    )))
+                rehash(curBuffers.nextStableVersion); //we must use cached version here, actual may be greater
+            else
+                rehash(curBuffers.nextStableVersion); //we must use cached version here, actual may be greater
+        }
+    }
+
+    /////////////////////////////////////////////////////////////
+    // Unsafe bucket accessors - avoid AtomicReferenceArray overhead
+    /////////////////////////////////////////////////////////////
 
     private static final int BB_BASE;
     private static final int BB_SHIFT;
@@ -987,35 +1088,6 @@ public class LongIntConcurrentChainedMap implements IConcurrentLongIntMap
         return unsafe.getLongVolatile(ar, ((long) idx << BB_SHIFT) + BB_BASE);
     }
 
-    public void changeSize( final int delta, final Buffers curBuffers, final int bucketLength )
-    {
-        if ( delta == 0 )
-            return;
-        //pick random pos in the size array
-        //do not use nextInt(bound) here - it is slower.
-        addSize( delta );
-
-        if ( bucketLength > m_iFillFactor && calculateSize() > curBuffers.threshold )
-        {
-            final long multiplier = m_fillFactor <= 2 ? 2 : m_iFillFactor;
-            int newCapacity = Primes.findNextPrime((long) Math.ceil( multiplier * curBuffers.threshold / m_fillFactor ));
-            //check if we got too close to the max array size, otherwise we will have to make a pretty useless resize when got close to 2G*fillFactor entries
-            if ( newCapacity * 1.5 > Primes.getMaxIntPrime() )
-                newCapacity = Primes.getMaxIntPrime();
-            //this check disables rehashing after a table has reached the maximal size
-            final long newThreshold = newCapacity >= Primes.getMaxIntPrime() ? Long.MAX_VALUE : curBuffers.threshold * multiplier;
-            //Entering rehashing mode. It does not matter which thread changes it, we still have to enter {@code rehash}.
-            //Using if-else here helps with debugging
-            if ( m_data.compareAndSet(curBuffers, new Buffers( m_longAlloc.allocate( newCapacity ), curBuffers.cur,
-                            newThreshold,
-                            curBuffers.version + 1, //switching to rehashing mode
-                            curBuffers.nextStableVersion //next stable version does not change at this moment
-                    )))
-                rehash(curBuffers.nextStableVersion); //we must use cached version here, actual may be greater
-            else
-                rehash(curBuffers.nextStableVersion); //we must use cached version here, actual may be greater
-        }
-    }
 
     /////////////////////////////////////////////////////////////////////
     //   Some debugging
@@ -1044,76 +1116,5 @@ public class LongIntConcurrentChainedMap implements IConcurrentLongIntMap
             if ( cnt[ i ] > 0 )
                 System.out.println( "Length " + i + " = " + cnt[ i ] );
     }
-
-    private static class UpdateResult
-    {
-        public long chain;
-        public int retValue;
-        public int sizeChange;
-        public Block input;
-        public Block output;
-        public int outputPrevStart;
-
-        public UpdateResult() {
-        }
-
-        public UpdateResult set(long chain, int retValue, int sizeChange, Block input, Block output, int outputPrevStart) {
-            this.chain = chain;
-            this.retValue = retValue;
-            this.sizeChange = sizeChange;
-            this.input = input;
-            this.output = output;
-            this.outputPrevStart = outputPrevStart;
-            return this;
-        }
-
-        @Override
-        public String toString() {
-            return "UpdateResult{" +
-                    "chain=" + chain +
-                    ", retValue=" + retValue +
-                    ", sizeChange=" + sizeChange +
-                    ", input=" + input +
-                    ", output=" + output +
-                    ", outputPrevStart=" + outputPrevStart +
-                    '}';
-        }
-    }
-
-    /////////////////////////////////////////////
-    // Map size support
-    /////////////////////////////////////////////
-
-    private static class MutableLong
-    {
-        public long v;
-    }
-
-    private final ThreadLocal<MutableLong> s_size = new ThreadLocal<MutableLong>(){
-        @Override
-        protected MutableLong initialValue() {
-            final MutableLong res = new MutableLong();
-            m_sizes.add( res );
-            return res;
-        }
-    };
-    private final CopyOnWriteArrayList<MutableLong> m_sizes = new CopyOnWriteArrayList<>();
-
-    private long calculateSize()
-    {
-        //todo may need volatile read
-        long res = 0;
-        for ( final MutableLong ml : m_sizes )
-        {
-            res += ml.v;
-        }
-        return res;
-    }
-
-    private void addSize( final int delta )
-    {
-        s_size.get().v += delta;
-    }
-
 
 }

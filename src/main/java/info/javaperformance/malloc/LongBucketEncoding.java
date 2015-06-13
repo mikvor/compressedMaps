@@ -30,6 +30,7 @@ package info.javaperformance.malloc;
  *  There are 2 forbidden encodings: 0 and 1 (you can never have them due to non zero length requirement)
  */
 public class LongBucketEncoding {
+    private static final int BLOCK_ID_OFFSET = 32;
     private static final int MAX_BLOCK_SIZE_BITS = 20;
     private static final int MAX_BLOCK_SIZE = 1 << MAX_BLOCK_SIZE_BITS;
     /** Maximal length of a bucket you can have encoded in {@code long} */
@@ -79,13 +80,13 @@ public class LongBucketEncoding {
      */
     public static int getBlockIndex( final long bucket )
     {
-        return (int) (bucket >> 32);
+        return (int) ( bucket >> BLOCK_ID_OFFSET );
     }
 
     /**
      * Get block length by bucket
      * @param bucket Bucket
-     * @return Block length, 0xFF in case when you should read it from the start of the bucket instead
+     * @return Block length, {@code MAX_ENCODED_LENGTH} in case when you should read it from the start of the bucket instead
      */
     public static int getBlockLength( final long bucket )
     {
@@ -94,14 +95,14 @@ public class LongBucketEncoding {
 
     /**
      * Pack all parts into a long bitmap
-     * @param blockIdx Block index (full long)
+     * @param blockIdx Block index (full int)
      * @param offset Offset in a block (20 bits)
      * @param length Bucket length (zero forbidden, up to 254 values, 0xFF - read from bucket)
      * @return A packed long
      */
     public static long pack( final int blockIdx, final int offset, final int length )
     {
-        return ( ( (long)blockIdx ) << 32 ) | offset | ( length << MAX_BLOCK_SIZE_BITS );
+        return ( ( ( long ) blockIdx ) << BLOCK_ID_OFFSET ) | offset | ( length << MAX_BLOCK_SIZE_BITS );
     }
 
 }
