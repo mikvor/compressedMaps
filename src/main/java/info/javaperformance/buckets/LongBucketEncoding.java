@@ -17,7 +17,7 @@
  *      Mikhail Vorontsov
  */
 
-package info.javaperformance.malloc;
+package info.javaperformance.buckets;
 
 /**
  * This class contains logic for packing/unpacking bucket information into a {@code long} value.
@@ -60,7 +60,7 @@ public class LongBucketEncoding {
         //16K blocks - 4K
         //32K blocks - 8K
         //and so on. Limit block size by 1M
-        return Math.min(((blocksActive >> 14) + 1) << 12, MAX_BLOCK_SIZE);
+        return Math.min(((blocksActive >>> 14) + 1) << 12, MAX_BLOCK_SIZE);
     }
 
     /**
@@ -80,7 +80,7 @@ public class LongBucketEncoding {
      */
     public static int getBlockIndex( final long bucket )
     {
-        return (int) ( bucket >> BLOCK_ID_OFFSET );
+        return (int) ( bucket >>> BLOCK_ID_OFFSET );
     }
 
     /**

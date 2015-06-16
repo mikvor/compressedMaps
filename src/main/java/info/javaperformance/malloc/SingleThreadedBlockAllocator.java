@@ -19,23 +19,16 @@
 
 package info.javaperformance.malloc;
 
-import info.javaperformance.buckets.LongBucketEncoding;
-import info.javaperformance.tools.ConcurrentIntObjectMap;
+import info.javaperformance.buckets.Buckets;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
-/**
- * Memory block allocator for concurrent maps
- */
-public class ConcurrentBlockAllocator implements IBlockAllocator {
+public class SingleThreadedBlockAllocator implements IBlockAllocator {
     /** Data blocks are stored here */
-    //private final BlockMap m_blocks = new BlockMap();
-    private final ConcurrentIntObjectMap<Block> m_blocks = new ConcurrentIntObjectMap<>( 1024 );
+    private final SingleThreadedBlockMap m_blocks = new SingleThreadedBlockMap();
     /** Always take next value for block allocation */
-    private final AtomicInteger m_nextBlock = new AtomicInteger( 0 );
+    private int m_nextBlock = 0;
 
     //must not be static - we don't want to share updateable objects
-    private final ThreadLocal<Block> m_currentBlock = new ThreadLocal<>();
+    private Block m_currentBlock = null;
 
     @Override
     public Block getBlockByIndex( final int index )
@@ -56,8 +49,7 @@ public class ConcurrentBlockAllocator implements IBlockAllocator {
      */
     private Block allocateNewBlock( final int blockSize )
     {
-        final int id = m_nextBlock.incrementAndGet();
-
+        final int id = ++m_nextBlock;
         final Block b = new Block( this, id, blockSize );
         m_blocks.put( id, b );
         return b;
@@ -66,35 +58,33 @@ public class ConcurrentBlockAllocator implements IBlockAllocator {
     /**
      * Get current or allocate a new thread local block
      * @param forceNew True to force a new block allocation
+     * @param data Buckets object, used to calculate the block size
      * @return A block managed by a current thread
      */
-    private Block getCurrentThreadBlock( final boolean forceNew )
+    private Block getCurrentBlock( final boolean forceNew, final Buckets data )
     {
         if ( forceNew )
+            return ( m_currentBlock = allocateNewBlock( data.getBlockSize( m_blocks.size() ) ) );
+        else
         {
-            final Block res = allocateNewBlock( LongBucketEncoding.getBlockSize( m_blocks.size() ) );
-            m_currentBlock.set( res );
-            return res;
-        }
-        else {
-            Block res = m_currentBlock.get();
-            if ( res == null )
-                m_currentBlock.set(res = allocateNewBlock( LongBucketEncoding.getBlockSize( m_blocks.size() ) ));
-            return res;
+            if ( m_currentBlock == null )
+                m_currentBlock = allocateNewBlock( data.getBlockSize( m_blocks.size() ) );
+            return m_currentBlock;
         }
     }
 
     /**
      * Get a thread local block which can contain the requested amount of data
      * @param requiredSize Required space
+     * @param data Buckets object, used to calculate the block size
      * @return A block
      */
-    public Block getThreadLocalBlock( final int requiredSize )
+    public Block getBlock( final int requiredSize, final Buckets data )
     {
-        Block cur = getCurrentThreadBlock(false);
+        Block cur = getCurrentBlock( false, data );
         if ( !cur.hasSpace( requiredSize ) ) {
             cur.writeFinished();
-            cur = getCurrentThreadBlock(true);
+            cur = getCurrentBlock( true, data );
         }
         return cur;
     }

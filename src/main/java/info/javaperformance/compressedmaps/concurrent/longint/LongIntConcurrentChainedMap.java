@@ -35,7 +35,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
-import static info.javaperformance.malloc.LongBucketEncoding.*;
+import static info.javaperformance.buckets.LongBucketEncoding.*;
 import static info.javaperformance.tools.VarLen.readUnsignedInt;
 import static info.javaperformance.tools.VarLen.writeUnsignedInt;
 
@@ -70,12 +70,14 @@ public class LongIntConcurrentChainedMap implements IConcurrentLongIntMap
 
     /*
     We store multiple reusable objects here. They are needed to avoid unnecessary object allocations.
+    These objects should not be static - some of the are initialized with map specific serializers, some may simply
+    keep some map state for longer than needed.
      */
-    private static final ThreadLocal<Iterator> s_iters = new ThreadLocal<>();
-    private static final ThreadLocal<ByteArray> s_bar1 = new ThreadLocal<>();
-    private static final ThreadLocal<ByteArray> s_bar2 = new ThreadLocal<>();
-    private static final ThreadLocal<Writer> s_writers = new ThreadLocal<>();
-    private static final ThreadLocal<UpdateResult> s_updateRes = new ThreadLocal<UpdateResult>(){
+    private final ThreadLocal<Iterator> s_iters = new ThreadLocal<>();
+    private final ThreadLocal<ByteArray> s_bar1 = new ThreadLocal<>();
+    private final ThreadLocal<ByteArray> s_bar2 = new ThreadLocal<>();
+    private final ThreadLocal<Writer> s_writers = new ThreadLocal<>();
+    private final ThreadLocal<UpdateResult> s_updateRes = new ThreadLocal<UpdateResult>(){
         @Override
         protected UpdateResult initialValue() {
             return new UpdateResult();
