@@ -17,7 +17,7 @@
  *      Mikhail Vorontsov
  */
 
-package info.javaperformance.compressedmaps.normal.longint;
+package info.javaperformance.compressedmaps.normal.longlong;
 
 import info.javaperformance.buckets.Buckets;
 import info.javaperformance.malloc.Block;
@@ -35,9 +35,9 @@ import static info.javaperformance.tools.VarLen.writeUnsignedInt;
  * A simple single threaded compressed map. It uses {@code int[]} instead of {@code long[]} for buckets
  * before it allocates 128K blocks, so that the smaller maps can benefit from the even smaller map footprint.
  */
-public class LongIntChainedMap implements ILongIntMap
+public class LongLongChainedMap implements ILongLongMap
 {
-    private static final int NO_VALUE = 0;
+    private static final long NO_VALUE = 0;
 
     /*
     We store multiple reusable objects here. They are needed to avoid unnecessary object allocations.
@@ -51,7 +51,7 @@ public class LongIntChainedMap implements ILongIntMap
     /** Key serializer */
     private final ILongSerializer m_keySerializer;
     /** Value serializer */
-    private final IIntSerializer m_valueSerializer;
+    private final ILongSerializer m_valueSerializer;
     /** Original fill factor */
     private final float m_fillFactor;
     /**
@@ -91,9 +91,9 @@ public class LongIntChainedMap implements ILongIntMap
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
      * @throws IllegalArgumentException If {@code fillFactor > 16}
      */
-    public LongIntChainedMap( final long size, float fillFactor )
+    public LongLongChainedMap( final long size, float fillFactor )
     {
-        this( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultIntSerializer.INSTANCE );
+        this( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultLongSerializer.INSTANCE );
     }
 
     /**
@@ -111,8 +111,8 @@ public class LongIntChainedMap implements ILongIntMap
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
      * @throws IllegalArgumentException If {@code fillFactor > 16}
      */
-    public LongIntChainedMap( final long size, final float fillFactor,
-                              final ILongSerializer keySerializer, final IIntSerializer valueSerializer )
+    public LongLongChainedMap( final long size, final float fillFactor,
+                              final ILongSerializer keySerializer, final ILongSerializer valueSerializer )
     {
         Objects.requireNonNull( keySerializer, "Key serializer must be provided!" );
         Objects.requireNonNull( valueSerializer, "Value serializer must be provided!" );
@@ -145,7 +145,7 @@ public class LongIntChainedMap implements ILongIntMap
         m_writer = new Writer( m_keySerializer, m_valueSerializer );
     }
 
-    public int get( final long key )
+    public long get( final long key )
     {
         if ( !m_data.select( getIndex( key, m_data.length() ) ) )
             return NO_VALUE;
@@ -162,12 +162,12 @@ public class LongIntChainedMap implements ILongIntMap
         return NO_VALUE;
     }
 
-    public int put( final long key, final int value )
+    public long put( final long key, final long value )
     {
         final int idx = getIndex( key, m_data.length() );
         //copy/update the chain
         final UpdateResult res = addToChain( idx, key, value );
-        final int ret = res.retValue; //must be saved in case of rehash
+        final long ret = res.retValue; //must be saved in case of rehash
         changeSize( res.sizeChange );
         return ret;
     }
@@ -179,7 +179,7 @@ public class LongIntChainedMap implements ILongIntMap
      * @param value Value
      * @param idx Bucket to use
      */
-    private void singleEntry( final Block output, final long key, final int value, final int idx )
+    private void singleEntry( final Block output, final long key, final long value, final int idx )
     {
         final int startPos = output.pos;
         final ByteArray bar = getByteArray( output );
@@ -197,7 +197,7 @@ public class LongIntChainedMap implements ILongIntMap
      * @param value Value
      * @return A new chain and an old value
      */
-    private UpdateResult addToChain( final int index, final long key, final int value )
+    private UpdateResult addToChain( final int index, final long key, final long value )
     {
         if ( !m_data.select( index ) ) {
             singleEntry( getBlock( m_singleEntryLength ), key, value, index );
@@ -220,7 +220,7 @@ public class LongIntChainedMap implements ILongIntMap
         outputBlock.increaseEntries(); //allocate block
         final Writer writer = m_writer.reset( baOutput );
 
-        int retValue = NO_VALUE;
+        long retValue = NO_VALUE;
         boolean inserted = false, updated = false;
 
         while ( iter.hasNext() )
@@ -266,10 +266,10 @@ public class LongIntChainedMap implements ILongIntMap
      * @return A new chain and an old value
      */
     private UpdateResult addToChainSlow( final int index, final Iterator iter, final Block inputBlock,
-                                         final int inputStartOffset, final long key, final int value )
+                                         final int inputStartOffset, final long key, final long value )
     {
         boolean hasKey = false;
-        int retValue = NO_VALUE;
+        long retValue = NO_VALUE;
         while ( iter.hasNext() )
         {
             iter.advance();
@@ -327,7 +327,7 @@ public class LongIntChainedMap implements ILongIntMap
         return m_updateResult.set( retValue, hasKey ? 0 : 1 );
     }
 
-    public int remove( final long key )
+    public long remove( final long key )
     {
         final int idx = getIndex( key, m_data.length() );
         if ( !m_data.select( idx ) )
@@ -361,7 +361,7 @@ public class LongIntChainedMap implements ILongIntMap
         final Iterator iter = m_iter.reset( input, m_data );
 
         boolean hasKey = false;
-        int retValue = NO_VALUE;
+        long retValue = NO_VALUE;
         while ( iter.hasNext() )
         {
             iter.advance();
@@ -484,13 +484,13 @@ public class LongIntChainedMap implements ILongIntMap
         /** Current entry key, initialized by {@code advance} call */
         private long key;
         /** Current entry value, initialized by {@code advance} call */
-        private int value;
+        private long value;
         /** Serialization for keys */
         private final ILongSerializer m_keySerializer;
         /** Serialization for values */
-        private final IIntSerializer m_valueSerializer;
+        private final ILongSerializer m_valueSerializer;
 
-        public Iterator( final ILongSerializer keySerializer, final IIntSerializer valueSerializer ) {
+        public Iterator( final ILongSerializer keySerializer, final ILongSerializer valueSerializer ) {
             m_keySerializer = keySerializer;
             m_valueSerializer = valueSerializer;
         }
@@ -543,7 +543,7 @@ public class LongIntChainedMap implements ILongIntMap
         /**
          * @return A value read by the last {@code advance} call
          */
-        public int getValue() {
+        public long getValue() {
             return value;
         }
 
@@ -572,13 +572,13 @@ public class LongIntChainedMap implements ILongIntMap
         /** Previously written key (used for delta encoding) */
         private long prevKey = 0;
         /** Previously written value (used for delta encoding) */
-        private int prevValue = 0;
+        private long prevValue = 0;
         /** Serialization for keys */
         private final ILongSerializer m_keySerializer;
         /** Serialization for values */
-        private final IIntSerializer m_valueSerializer;
+        private final ILongSerializer m_valueSerializer;
 
-        public Writer( final ILongSerializer keySerializer, final IIntSerializer valueSerializer)
+        public Writer( final ILongSerializer keySerializer, final ILongSerializer valueSerializer)
         {
             m_keySerializer = keySerializer;
             m_valueSerializer = valueSerializer;
@@ -618,7 +618,7 @@ public class LongIntChainedMap implements ILongIntMap
          * @param k Key to write
          * @param v Value to write
          */
-        public void writePair( final long k, final int v )
+        public void writePair( final long k, final long v )
         {
             if ( first ) {
                 m_keySerializer.write( k, buf );
@@ -672,13 +672,13 @@ public class LongIntChainedMap implements ILongIntMap
      */
     private static class UpdateResult
     {
-        public int retValue;
+        public long retValue;
         public int sizeChange;
 
         public UpdateResult() {
         }
 
-        public UpdateResult set( int retValue, int sizeChange )
+        public UpdateResult set( long retValue, int sizeChange )
         {
             this.retValue = retValue;
             this.sizeChange = sizeChange;

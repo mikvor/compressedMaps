@@ -17,7 +17,7 @@
  *      Mikhail Vorontsov
  */
 
-package info.javaperformance.compressedmaps.normal.longint;
+package info.javaperformance.compressedmaps.normal.intint;
 
 import info.javaperformance.buckets.Buckets;
 import info.javaperformance.malloc.Block;
@@ -35,7 +35,7 @@ import static info.javaperformance.tools.VarLen.writeUnsignedInt;
  * A simple single threaded compressed map. It uses {@code int[]} instead of {@code long[]} for buckets
  * before it allocates 128K blocks, so that the smaller maps can benefit from the even smaller map footprint.
  */
-public class LongIntChainedMap implements ILongIntMap
+public class IntIntChainedMap implements IIntIntMap
 {
     private static final int NO_VALUE = 0;
 
@@ -49,7 +49,7 @@ public class LongIntChainedMap implements ILongIntMap
     private final Writer m_writer;
 
     /** Key serializer */
-    private final ILongSerializer m_keySerializer;
+    private final IIntSerializer m_keySerializer;
     /** Value serializer */
     private final IIntSerializer m_valueSerializer;
     /** Original fill factor */
@@ -91,9 +91,9 @@ public class LongIntChainedMap implements ILongIntMap
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
      * @throws IllegalArgumentException If {@code fillFactor > 16}
      */
-    public LongIntChainedMap( final long size, float fillFactor )
+    public IntIntChainedMap( final long size, float fillFactor )
     {
-        this( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultIntSerializer.INSTANCE );
+        this( size, fillFactor, DefaultIntSerializer.INSTANCE, DefaultIntSerializer.INSTANCE );
     }
 
     /**
@@ -111,8 +111,8 @@ public class LongIntChainedMap implements ILongIntMap
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
      * @throws IllegalArgumentException If {@code fillFactor > 16}
      */
-    public LongIntChainedMap( final long size, final float fillFactor,
-                              final ILongSerializer keySerializer, final IIntSerializer valueSerializer )
+    public IntIntChainedMap( final long size, final float fillFactor,
+                              final IIntSerializer keySerializer, final IIntSerializer valueSerializer )
     {
         Objects.requireNonNull( keySerializer, "Key serializer must be provided!" );
         Objects.requireNonNull( valueSerializer, "Value serializer must be provided!" );
@@ -145,7 +145,7 @@ public class LongIntChainedMap implements ILongIntMap
         m_writer = new Writer( m_keySerializer, m_valueSerializer );
     }
 
-    public int get( final long key )
+    public int get( final int key )
     {
         if ( !m_data.select( getIndex( key, m_data.length() ) ) )
             return NO_VALUE;
@@ -162,7 +162,7 @@ public class LongIntChainedMap implements ILongIntMap
         return NO_VALUE;
     }
 
-    public int put( final long key, final int value )
+    public int put( final int key, final int value )
     {
         final int idx = getIndex( key, m_data.length() );
         //copy/update the chain
@@ -179,7 +179,7 @@ public class LongIntChainedMap implements ILongIntMap
      * @param value Value
      * @param idx Bucket to use
      */
-    private void singleEntry( final Block output, final long key, final int value, final int idx )
+    private void singleEntry( final Block output, final int key, final int value, final int idx )
     {
         final int startPos = output.pos;
         final ByteArray bar = getByteArray( output );
@@ -197,7 +197,7 @@ public class LongIntChainedMap implements ILongIntMap
      * @param value Value
      * @return A new chain and an old value
      */
-    private UpdateResult addToChain( final int index, final long key, final int value )
+    private UpdateResult addToChain( final int index, final int key, final int value )
     {
         if ( !m_data.select( index ) ) {
             singleEntry( getBlock( m_singleEntryLength ), key, value, index );
@@ -266,7 +266,7 @@ public class LongIntChainedMap implements ILongIntMap
      * @return A new chain and an old value
      */
     private UpdateResult addToChainSlow( final int index, final Iterator iter, final Block inputBlock,
-                                         final int inputStartOffset, final long key, final int value )
+                                         final int inputStartOffset, final int key, final int value )
     {
         boolean hasKey = false;
         int retValue = NO_VALUE;
@@ -327,7 +327,7 @@ public class LongIntChainedMap implements ILongIntMap
         return m_updateResult.set( retValue, hasKey ? 0 : 1 );
     }
 
-    public int remove( final long key )
+    public int remove( final int key )
     {
         final int idx = getIndex( key, m_data.length() );
         if ( !m_data.select( idx ) )
@@ -352,7 +352,7 @@ public class LongIntChainedMap implements ILongIntMap
      * @param idx Key bucket
      * @return Updated or original chain
      */
-    private UpdateResult removeKey( final long key, final int idx )
+    private UpdateResult removeKey( final int key, final int idx )
     {
         final Block inputBlock = getBlockByIndex( m_data.getBlockIndex() );
         final int inputStartOffset = m_data.getOffset();
@@ -467,7 +467,7 @@ public class LongIntChainedMap implements ILongIntMap
      * @param tabSize Bucket table size
      * @return Bucket index
      */
-    private int getIndex( final long key, final int tabSize )
+    private int getIndex( final int key, final int tabSize )
     {
         return Tools.getIndexFast( key, tabSize );
     }
@@ -482,15 +482,15 @@ public class LongIntChainedMap implements ILongIntMap
         /** Index of the current entry (0-based) */
         private int cur = 0;
         /** Current entry key, initialized by {@code advance} call */
-        private long key;
+        private int key;
         /** Current entry value, initialized by {@code advance} call */
         private int value;
         /** Serialization for keys */
-        private final ILongSerializer m_keySerializer;
+        private final IIntSerializer m_keySerializer;
         /** Serialization for values */
         private final IIntSerializer m_valueSerializer;
 
-        public Iterator( final ILongSerializer keySerializer, final IIntSerializer valueSerializer ) {
+        public Iterator( final IIntSerializer keySerializer, final IIntSerializer valueSerializer ) {
             m_keySerializer = keySerializer;
             m_valueSerializer = valueSerializer;
         }
@@ -536,7 +536,7 @@ public class LongIntChainedMap implements ILongIntMap
         /**
          * @return A key read by the last {@code advance} call
          */
-        public long getKey() {
+        public int getKey() {
             return key;
         }
 
@@ -570,15 +570,15 @@ public class LongIntChainedMap implements ILongIntMap
         /** Is this a first entry (used for delta encoding) */
         private boolean first = true;
         /** Previously written key (used for delta encoding) */
-        private long prevKey = 0;
+        private int prevKey = 0;
         /** Previously written value (used for delta encoding) */
         private int prevValue = 0;
         /** Serialization for keys */
-        private final ILongSerializer m_keySerializer;
+        private final IIntSerializer m_keySerializer;
         /** Serialization for values */
         private final IIntSerializer m_valueSerializer;
 
-        public Writer( final ILongSerializer keySerializer, final IIntSerializer valueSerializer)
+        public Writer( final IIntSerializer keySerializer, final IIntSerializer valueSerializer)
         {
             m_keySerializer = keySerializer;
             m_valueSerializer = valueSerializer;
@@ -618,7 +618,7 @@ public class LongIntChainedMap implements ILongIntMap
          * @param k Key to write
          * @param v Value to write
          */
-        public void writePair( final long k, final int v )
+        public void writePair( final int k, final int v )
         {
             if ( first ) {
                 m_keySerializer.write( k, buf );

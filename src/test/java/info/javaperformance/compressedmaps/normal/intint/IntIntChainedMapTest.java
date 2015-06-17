@@ -17,7 +17,7 @@
  *      Mikhail Vorontsov
  */
 
-package info.javaperformance.compressedmaps.normal.longint;
+package info.javaperformance.compressedmaps.normal.intint;
 
 import junit.framework.TestCase;
 
@@ -26,15 +26,15 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class LongIntChainedMapTest extends TestCase
+public class IntIntChainedMapTest extends TestCase
 {
     //fill factors to be tested
     private final static float[] FILL_FACTORS = { 0.25f, 0.5f, 0.75f, 0.9f, 0.99f, 1f, 2f, 3f, 5f, 16f };
     private final int SIZE = 1000000;
 
-    protected ILongIntMap makeMap( final long size, final float fillFactor )
+    protected IIntIntMap makeMap( final long size, final float fillFactor )
     {
-        return new LongIntChainedMap( size, fillFactor );
+        return new IntIntChainedMap( size, fillFactor );
     }
 
     /**
@@ -48,7 +48,7 @@ public class LongIntChainedMapTest extends TestCase
 
     private void testPutHelper( final float fillFactor )
     {
-        final ILongIntMap map = makeMap(100, fillFactor);
+        final IIntIntMap map = makeMap(100, fillFactor);
         for ( int i = 0; i < SIZE; ++i )
         {
             assertEquals(0, map.put(i, i) );
@@ -73,7 +73,7 @@ public class LongIntChainedMapTest extends TestCase
 
     private void testPutNegative( final float fillFactor )
     {
-        final ILongIntMap map = makeMap(100, fillFactor);
+        final IIntIntMap map = makeMap(100, fillFactor);
         for ( int i = 0; i < SIZE; ++i )
         {
             map.put(-i, -i);
@@ -97,7 +97,7 @@ public class LongIntChainedMapTest extends TestCase
 
     private void testPutThenUpdate( final float fillFactor )
     {
-        final ILongIntMap map = makeMap(100, fillFactor);
+        final IIntIntMap map = makeMap(100, fillFactor);
         for ( int i = 0; i < SIZE; ++i )
         {
             map.put(i, i);
@@ -136,14 +136,14 @@ public class LongIntChainedMapTest extends TestCase
         final int seed = ThreadLocalRandom.current().nextInt();
         System.out.println( "testPutRandom: ff = " + fillFactor + ", seed = " + seed);
         final Random r = new Random(seed);
-        final Set<Long> set = new HashSet<>( SIZE );
-        final long[] vals = new long[ SIZE ];
+        final Set<Integer> set = new HashSet<>( SIZE );
+        final int[] vals = new int[ SIZE ];
         while ( set.size() < SIZE )
-            set.add( r.nextLong() );
+            set.add( r.nextInt() );
         int i = 0;
-        for ( final Long v : set )
+        for ( final Integer v : set )
             vals[ i++ ] = v;
-        final ILongIntMap map = makeMap(100, fillFactor);
+        final IIntIntMap map = makeMap(100, fillFactor);
         for ( i = 0; i < vals.length; ++i )
         {
             assertEquals(0, map.put(vals[i], (int)vals[i]));
@@ -167,7 +167,7 @@ public class LongIntChainedMapTest extends TestCase
 
     private void testRemoveHelper( final float fillFactor )
     {
-        final ILongIntMap map = makeMap(100, fillFactor);
+        final IIntIntMap map = makeMap(100, fillFactor);
         int addCnt = 0, removeCnt = 0;
         for ( int i = 0; i < SIZE; ++i )
         {
@@ -200,10 +200,10 @@ public class LongIntChainedMapTest extends TestCase
     {
         final Random r = new Random( 1 );
         final int[] values = new int[ SIZE ];
-        Set<Long> ks = new HashSet<>( SIZE );
+        Set<Integer> ks = new HashSet<>( SIZE );
         while ( ks.size() < SIZE )
-            ks.add( r.nextLong() );
-        final Long[] keys = ks.toArray( new Long[ SIZE ] );
+            ks.add( r.nextInt() );
+        final Integer[] keys = ks.toArray( new Integer[ SIZE ] );
         ks = null;
 
         assertEquals(SIZE, keys.length);
@@ -211,7 +211,7 @@ public class LongIntChainedMapTest extends TestCase
         for ( int i = 0; i < SIZE; ++i )
             values[i] = r.nextInt();
 
-        ILongIntMap m = makeMap( 100, ff );
+        IIntIntMap m = makeMap( 100, ff );
         int add = 0, remove = 0;
         while ( add < SIZE )
         {

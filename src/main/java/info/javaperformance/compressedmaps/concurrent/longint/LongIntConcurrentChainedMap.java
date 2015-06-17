@@ -121,7 +121,7 @@ public class LongIntConcurrentChainedMap implements IConcurrentLongIntMap
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
      * @throws IllegalArgumentException If {@code fillFactor > 16}
      */
-    public LongIntConcurrentChainedMap( final int size, float fillFactor )
+    public LongIntConcurrentChainedMap( final long size, float fillFactor )
     {
         this( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultIntSerializer.INSTANCE );
     }
@@ -141,7 +141,7 @@ public class LongIntConcurrentChainedMap implements IConcurrentLongIntMap
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
      * @throws IllegalArgumentException If {@code fillFactor > 16}
      */
-    public LongIntConcurrentChainedMap( final int size, final float fillFactor,
+    public LongIntConcurrentChainedMap( final long size, final float fillFactor,
                                        final ILongSerializer keySerializer, final IIntSerializer valueSerializer )
     {
         Objects.requireNonNull( keySerializer, "Key serializer must be provided!" );
@@ -155,12 +155,18 @@ public class LongIntConcurrentChainedMap implements IConcurrentLongIntMap
         m_valueSerializer = valueSerializer;
         m_fillFactor = fillFactor;
         m_iFillFactor = ( int ) Math.ceil( m_fillFactor );
-        final int newCapacity = Primes.findNextPrime((int) Math.ceil(size / fillFactor));
+        final long requestedCapacity = ( long ) Math.ceil( size / fillFactor );
+        final int newCapacity = requestedCapacity >= Primes.getMaxIntPrime() ? Primes.getMaxIntPrime() : Primes.findNextPrime( requestedCapacity );
         //this threshold adjustment is needed on tiny initial size / large fill factor combinations so that we do not
         //rehash table without table size increase in future.
-        int threshold = size;
-        while ( Primes.findNextPrime((int) Math.ceil(threshold * 2 / fillFactor)) == newCapacity )
-            threshold *= 2;
+        long threshold;
+        if ( newCapacity == Primes.getMaxIntPrime() )
+            threshold = Long.MAX_VALUE;
+        else {
+            threshold = size;
+            while ( Primes.findNextPrime( ( int ) Math.ceil( threshold * 2 / fillFactor ) ) == newCapacity )
+                threshold *= 2;
+        }
         m_data = new AtomicReference<>( new Buffers( m_longAlloc.allocate( newCapacity ), null, threshold, 0, 2 ) );
         m_singleEntryLength = getMaxSpace( 1 ); //optimization
     }
@@ -615,7 +621,7 @@ public class LongIntConcurrentChainedMap implements IConcurrentLongIntMap
      * Help rehashing the table.
      * @param nextStableVersion Leave this method once the current version is greater or equal
      */
-    public void rehash( final int nextStableVersion )
+    private void rehash( final int nextStableVersion )
     {
         Buffers buffers = m_data.get();
 
@@ -1023,7 +1029,7 @@ public class LongIntConcurrentChainedMap implements IConcurrentLongIntMap
         s_size.get().v += delta;
     }
 
-    public void changeSize( final int delta, final Buffers curBuffers, final int bucketLength )
+    private void changeSize( final int delta, final Buffers curBuffers, final int bucketLength )
     {
         if ( delta == 0 )
             return;
