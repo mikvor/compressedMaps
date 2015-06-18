@@ -19,32 +19,54 @@
 
 package info.javaperformance.malloc;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 /**
- * Unit of memory allocation.
+ * A single threaded version of a block class with removed concurrency requirements
+ * and recycling support.
  */
-public class Block {
+public class SingleThreadedBlock {
     /** Memory allocator. This reference is needed for the cleanup. */
-    private final ConcurrentBlockAllocator parent;
+    private final SingleThreadedBlockAllocator parent;
     /** We store data here */
     public final byte[] data;
     /** Index of this block in the allocator */
-    public final int index;
+    private int m_index;
     /** Current write position */
     public int pos;
     /** Usage counter */
-    private final AtomicInteger used = new AtomicInteger( 0 );
+    private int m_used = 0;
     /** Have we filled the whole block? */
-    public volatile boolean writeDone;
+    private boolean m_writeDone;
 
-    public Block( final ConcurrentBlockAllocator parent, final int index, final int size )
+    private static int m_count = 0;
+
+    public SingleThreadedBlock( final SingleThreadedBlockAllocator parent, final int index, final int size )
     {
         this.parent = parent;
-        this.index = index;
+        m_index = index;
         data = new byte[ size ];
         pos = 0;
-        writeDone = false;
+        m_writeDone = false;
+        ++m_count;
+        if ( m_count % 100 == 0 )
+            System.out.println( "Allocated blocks = " + m_count );
+    }
+
+    /**
+     * Reset the same block before reusing it.
+     * @param newIndex New block index
+     * @return this
+     */
+    public SingleThreadedBlock reset( final int newIndex )
+    {
+        m_index = newIndex;
+        pos = 0;
+        m_used = 0;
+        m_writeDone = false;
+        return this;
+    }
+
+    public int getIndex() {
+        return m_index;
     }
 
     /**
@@ -63,8 +85,8 @@ public class Block {
     public void decreaseEntries()
     {
         //clean up itself
-        if ( used.decrementAndGet() == 0 && writeDone )
-            parent.removeBlock( index );
+        if ( --m_used == 0 && m_writeDone )
+            parent.removeBlock( m_index );
     }
 
     /**
@@ -72,7 +94,7 @@ public class Block {
      */
     public void increaseEntries()
     {
-        used.incrementAndGet();
+        ++m_used;
     }
 
     /**
@@ -80,17 +102,18 @@ public class Block {
      */
     public void writeFinished()
     {
-        writeDone = true; //from now on only useCount could be reduced
+        m_writeDone = true;
     }
 
     @Override
     public String toString() {
         return "Block{" +
                 "data.len=" + data.length +
-                ", index=" + index +
+                ", index=" + m_index +
                 ", pos=" + pos +
-                ", used=" + used +
-                ", writeDone=" + writeDone +
+                ", used=" + m_used +
+                ", writeDone=" + m_writeDone +
                 '}';
     }
+
 }

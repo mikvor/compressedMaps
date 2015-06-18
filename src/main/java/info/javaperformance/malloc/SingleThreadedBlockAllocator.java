@@ -21,25 +21,56 @@ package info.javaperformance.malloc;
 
 import info.javaperformance.buckets.Buckets;
 
-public class SingleThreadedBlockAllocator implements IBlockAllocator {
+import java.util.ArrayDeque;
+
+public class SingleThreadedBlockAllocator {
+    public static final long DEFAULT_RECYCLE_BOUND = 32 * 1024;
+
     /** Data blocks are stored here */
     private final SingleThreadedBlockMap m_blocks = new SingleThreadedBlockMap();
     /** Always take next value for block allocation */
     private int m_nextBlock = 0;
+    /** Block recycle queue. Has an upper bound in order to avoid keeping too much data */
+    private final ArrayDeque<SingleThreadedBlock> m_recycle;
+    /** Currently appended block */
+    private SingleThreadedBlock m_currentBlock = null;
+    /** Maximal amount of memory in the blocks we want to recycle */
+    private final long m_recycleMemoryLimit;
+    /** The amount of storage in the currently available recycled blocks */
+    private long m_currentlyRecycled;
 
-    //must not be static - we don't want to share updateable objects
-    private Block m_currentBlock = null;
+    /**
+     * Create an allocator with a given recycle memory limit
+     * @param recycleMemoryLimit Maximal amount of memory we want to keep in the recycle queue
+     */
+    public SingleThreadedBlockAllocator( final long recycleMemoryLimit ) {
+        m_recycleMemoryLimit = recycleMemoryLimit;
+        m_recycle = new ArrayDeque<>( 16 );
+    }
 
-    @Override
-    public Block getBlockByIndex( final int index )
+    /**
+     * Get a block with a given index
+     * @param index Block index
+     * @return A block or {@code null} if a block is not found (which generally means a bug)
+     */
+    public SingleThreadedBlock getBlockByIndex( final int index )
     {
         return m_blocks.get( index );
     }
 
-    @Override
+    /**
+     * Remove a block from the allocator. Should be called by blocks only when their usage counter goes down to zero
+     * @param blockId Block index
+     */
     public void removeBlock( final int blockId )
     {
-        m_blocks.remove( blockId );
+        final SingleThreadedBlock old = m_blocks.remove( blockId );
+        //save the block for later reuse. It most likely resides in the old gen already, so there is
+        //not much sense to discard it any longer.
+        if ( old != null && old.data.length + m_currentlyRecycled <= m_recycleMemoryLimit ) {
+            m_recycle.add( old );
+            m_currentlyRecycled += old.data.length;
+        }
     }
 
     /**
@@ -47,10 +78,24 @@ public class SingleThreadedBlockAllocator implements IBlockAllocator {
      * @param blockSize Block size, should be defined by callers
      * @return A new block
      */
-    private Block allocateNewBlock( final int blockSize )
+    private SingleThreadedBlock allocateNewBlock( final int blockSize )
     {
         final int id = ++m_nextBlock;
-        final Block b = new Block( this, id, blockSize );
+        SingleThreadedBlock b = null;
+        //try reusing a block prior to allocation
+        if ( m_currentlyRecycled > 0 ) {
+            while ( m_currentlyRecycled > 0 ) {
+                final SingleThreadedBlock block = m_recycle.removeFirst();
+                m_currentlyRecycled -= block.data.length;
+                //we should not allocate blocks bigger than requested. Smaller blocks are OK.
+                if ( block.data.length <= blockSize ) {
+                    b = block.reset( id );
+                    break;
+                }
+            }
+        }
+        if ( b == null )
+            b = new SingleThreadedBlock( this, id, blockSize );
         m_blocks.put( id, b );
         return b;
     }
@@ -61,7 +106,7 @@ public class SingleThreadedBlockAllocator implements IBlockAllocator {
      * @param data Buckets object, used to calculate the block size
      * @return A block managed by a current thread
      */
-    private Block getCurrentBlock( final boolean forceNew, final Buckets data )
+    private SingleThreadedBlock getCurrentBlock( final boolean forceNew, final Buckets data )
     {
         if ( forceNew )
             return ( m_currentBlock = allocateNewBlock( data.getBlockSize( m_blocks.size() ) ) );
@@ -79,9 +124,9 @@ public class SingleThreadedBlockAllocator implements IBlockAllocator {
      * @param data Buckets object, used to calculate the block size
      * @return A block
      */
-    public Block getBlock( final int requiredSize, final Buckets data )
+    public SingleThreadedBlock getBlock( final int requiredSize, final Buckets data )
     {
-        Block cur = getCurrentBlock( false, data );
+        SingleThreadedBlock cur = getCurrentBlock( false, data );
         if ( !cur.hasSpace( requiredSize ) ) {
             cur.writeFinished();
             cur = getCurrentBlock( true, data );

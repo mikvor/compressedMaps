@@ -31,11 +31,11 @@ public class SingleThreadedBlockMapTest extends TestCase {
         assertEquals( DELAY, map.size() );
         for ( int i = DELAY; i < DELAY * 10; ++i )
         {
-            assertEquals(i - DELAY, map.get(i - DELAY).index);
-            addBlock(map, i);
-            assertEquals(DELAY + 1, map.size());
-            map.remove(i - DELAY);
-            assertEquals(DELAY, map.size());
+            assertEquals( i - DELAY, map.get( i - DELAY ).getIndex() );
+            addBlock( map, i );
+            assertEquals( DELAY + 1, map.size() );
+            map.remove( i - DELAY );
+            assertEquals( DELAY, map.size() );
         }
     }
 
@@ -86,8 +86,8 @@ public class SingleThreadedBlockMapTest extends TestCase {
     {
         for ( int id : ids )
         {
-            assertNotNull( map.get(id) );
-            assertEquals( id , map.get(id).index );
+            assertNotNull( map.get( id ) );
+            assertEquals( id , map.get( id ).getIndex() );
         }
     }
 
@@ -99,7 +99,7 @@ public class SingleThreadedBlockMapTest extends TestCase {
 
     private void addBlock( final SingleThreadedBlockMap map, final int index )
     {
-        map.put(index, new Block(null, index, 1));
+        map.put(index, new SingleThreadedBlock(null, index, 1));
     }
 
 }

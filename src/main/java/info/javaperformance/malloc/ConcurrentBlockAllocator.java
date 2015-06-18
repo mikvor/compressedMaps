@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Memory block allocator for concurrent maps
  */
-public class ConcurrentBlockAllocator implements IBlockAllocator {
+public class ConcurrentBlockAllocator {
     /** Data blocks are stored here */
     //private final BlockMap m_blocks = new BlockMap();
     private final ConcurrentIntObjectMap<Block> m_blocks = new ConcurrentIntObjectMap<>( 1024 );
@@ -37,13 +37,11 @@ public class ConcurrentBlockAllocator implements IBlockAllocator {
     //must not be static - we don't want to share updateable objects
     private final ThreadLocal<Block> m_currentBlock = new ThreadLocal<>();
 
-    @Override
     public Block getBlockByIndex( final int index )
     {
         return m_blocks.get( index );
     }
 
-    @Override
     public void removeBlock( final int blockId )
     {
         m_blocks.remove( blockId );

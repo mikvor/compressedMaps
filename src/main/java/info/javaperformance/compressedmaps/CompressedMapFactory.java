@@ -39,6 +39,9 @@ import info.javaperformance.serializers.ILongSerializer;
  * All factories have the same constraints:
  * - fill factor between 0.01 (exclusive) and 16 (inclusive)
  * - initial size could be greater than {@code Integer.MAX_VALUE} (it makes sense because the fill factor could be greater than 1)
+ *
+ * todo
+ * generate this file after concurrent code generator is ready
  */
 public class CompressedMapFactory
 {
@@ -52,9 +55,10 @@ public class CompressedMapFactory
     }
 
     public IIntIntMap singleThreadedIntIntMap( final long size, final float fillFactor,
-                                                 final IIntSerializer keySerializer, final IIntSerializer valueSerializer )
+                                               final IIntSerializer keySerializer, final IIntSerializer valueSerializer,
+                                               final long blockCacheLimit )
     {
-        return new IntIntChainedMap( size, fillFactor, keySerializer, valueSerializer );
+        return new IntIntChainedMap( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
     }
 
     public IIntLongMap singleThreadedIntLongMap( final long size, final float fillFactor )
@@ -63,9 +67,10 @@ public class CompressedMapFactory
     }
 
     public IIntLongMap singleThreadedIntLongMap( final long size, final float fillFactor,
-                                                 final IIntSerializer keySerializer, final ILongSerializer valueSerializer )
+                                                 final IIntSerializer keySerializer, final ILongSerializer valueSerializer,
+                                                 final long blockCacheLimit )
     {
-        return new IntLongChainedMap( size, fillFactor, keySerializer, valueSerializer );
+        return new IntLongChainedMap( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
     }
 
     public ILongIntMap singleThreadedLongIntMap( final long size, final float fillFactor )
@@ -74,9 +79,10 @@ public class CompressedMapFactory
     }
 
     public ILongIntMap singleThreadedLongIntMap( final long size, final float fillFactor,
-                                                 final ILongSerializer keySerializer, final IIntSerializer valueSerializer )
+                                                 final ILongSerializer keySerializer, final IIntSerializer valueSerializer,
+                                                 final long blockCacheLimit )
     {
-        return new LongIntChainedMap( size, fillFactor, keySerializer, valueSerializer );
+        return new LongIntChainedMap( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
     }
 
     public ILongLongMap singleThreadedLongLongMap( final long size, final float fillFactor )
@@ -85,9 +91,10 @@ public class CompressedMapFactory
     }
 
     public ILongLongMap singleThreadedLongLongMap( final long size, final float fillFactor,
-                                                 final ILongSerializer keySerializer, final ILongSerializer valueSerializer )
+                                                   final ILongSerializer keySerializer, final ILongSerializer valueSerializer,
+                                                   final long blockCacheLimit )
     {
-        return new LongLongChainedMap( size, fillFactor, keySerializer, valueSerializer );
+        return new LongLongChainedMap( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
     }
 
     /////////////////////////////////////////////////////////////

@@ -20,7 +20,7 @@
 package info.javaperformance.compressedmaps.normal.longlong;
 
 import info.javaperformance.buckets.Buckets;
-import info.javaperformance.malloc.Block;
+import info.javaperformance.malloc.SingleThreadedBlock;
 import info.javaperformance.malloc.SingleThreadedBlockAllocator;
 import info.javaperformance.serializers.*;
 import info.javaperformance.tools.Primes;
@@ -73,7 +73,7 @@ public class LongLongChainedMap implements ILongLongMap
     private long m_threshold;
 
     /** Memory blocks are allocated and tracked here */
-    private final SingleThreadedBlockAllocator m_blockAllocator = new SingleThreadedBlockAllocator();
+    private final SingleThreadedBlockAllocator m_blockAllocator;
 
     /** Length of a single entry */
     private final int m_singleEntryLength;
@@ -89,11 +89,11 @@ public class LongLongChainedMap implements ILongLongMap
      *                   than {@code HashMap} can provide you.
      *
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
-     * @throws IllegalArgumentException If {@code fillFactor > 16}
+     * @throws IllegalArgumentException If {@code fillFactor > 16} or {@code fillFactor <= 0.01}
      */
     public LongLongChainedMap( final long size, float fillFactor )
     {
-        this( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultLongSerializer.INSTANCE );
+        this( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultLongSerializer.INSTANCE, SingleThreadedBlockAllocator.DEFAULT_RECYCLE_BOUND );
     }
 
     /**
@@ -107,12 +107,15 @@ public class LongLongChainedMap implements ILongLongMap
      *                   than {@code HashMap} can provide you.
      * @param keySerializer Serializer for keys
      * @param valueSerializer Serializer for values
+     * @param blockCacheLimit The limit on the amount of memory blocks we try to reuse in order to reduce the GC load.
+     *                        Increase it over the default (32K) if you want nearly no GC impact after the map size will stabilize.
      *
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
-     * @throws IllegalArgumentException If {@code fillFactor > 16}
+     * @throws IllegalArgumentException If {@code fillFactor > 16} or {@code fillFactor <= 0.01} or {@code blockCacheLimit < 0}
      */
     public LongLongChainedMap( final long size, final float fillFactor,
-                              final ILongSerializer keySerializer, final ILongSerializer valueSerializer )
+                               final ILongSerializer keySerializer, final ILongSerializer valueSerializer,
+                               final long blockCacheLimit )
     {
         Objects.requireNonNull( keySerializer, "Key serializer must be provided!" );
         Objects.requireNonNull( valueSerializer, "Value serializer must be provided!" );
@@ -120,9 +123,12 @@ public class LongLongChainedMap implements ILongLongMap
             throw new IllegalArgumentException( "Fill factors higher than 16 are not supported!" );
         if ( fillFactor <= 0.01 )
             throw new IllegalArgumentException( "Fill factor must be greater than 0.01 and less or equal to 16!" );
+        if ( blockCacheLimit < 0 )
+            throw new IllegalArgumentException( "BlockCacheLimit can not be negative!" );
 
         m_keySerializer = keySerializer;
         m_valueSerializer = valueSerializer;
+        m_blockAllocator = new SingleThreadedBlockAllocator( blockCacheLimit );
         m_fillFactor = fillFactor;
         m_iFillFactor = ( int ) Math.ceil( m_fillFactor );
         final long requestedCapacity = ( long ) Math.ceil( size / fillFactor );
@@ -150,7 +156,7 @@ public class LongLongChainedMap implements ILongLongMap
         if ( !m_data.select( getIndex( key, m_data.length() ) ) )
             return NO_VALUE;
 
-        final Block input = getBlockByIndex( m_data.getBlockIndex() );
+        final SingleThreadedBlock input = getBlockByIndex( m_data.getBlockIndex() );
         final Iterator iter = m_iter.reset( getByteArray( input, m_data.getOffset() ), m_data );
         while ( iter.hasNext() ) {
             iter.advance();
@@ -179,14 +185,14 @@ public class LongLongChainedMap implements ILongLongMap
      * @param value Value
      * @param idx Bucket to use
      */
-    private void singleEntry( final Block output, final long key, final long value, final int idx )
+    private void singleEntry( final SingleThreadedBlock output, final long key, final long value, final int idx )
     {
         final int startPos = output.pos;
         final ByteArray bar = getByteArray( output );
         output.increaseEntries(); //allocate block prior to writing
         m_writer.reset( bar ).writePair( key, value );
         output.pos = bar.position();
-        m_data.set( idx, output.index, startPos, 1 );
+        m_data.set( idx, output.getIndex(), startPos, 1 );
     }
 
     /**
@@ -204,7 +210,7 @@ public class LongLongChainedMap implements ILongLongMap
             return m_updateResult.set( NO_VALUE, 1 );
         }
 
-        final Block inputBlock = getBlockByIndex( m_data.getBlockIndex() );
+        final SingleThreadedBlock inputBlock = getBlockByIndex( m_data.getBlockIndex() );
         final int inputStartOffset = m_data.getOffset();
 
         final ByteArray input = getByteArray( inputBlock, inputStartOffset );
@@ -212,7 +218,7 @@ public class LongLongChainedMap implements ILongLongMap
         if ( iter.getElems() > m_data.maxEncodedLength() - 2 ) //could grow to 255+, which should be stored in the bucket
             return addToChainSlow( index, iter, inputBlock, inputStartOffset, key, value );
 
-        final Block outputBlock = getBlock( getMaxSpace( iter.getElems() + 1 ) );
+        final SingleThreadedBlock outputBlock = getBlock( getMaxSpace( iter.getElems() + 1 ) );
         final int startOutputPos = outputBlock.pos;
         final ByteArray baOutput = getByteArray2( outputBlock );
 
@@ -250,7 +256,7 @@ public class LongLongChainedMap implements ILongLongMap
 
         outputBlock.pos = baOutput.position();
         final int sizeChange = updated ? 0 : 1;
-        m_data.set( index, outputBlock.index, startOutputPos, iter.getElems() + sizeChange );
+        m_data.set( index, outputBlock.getIndex(), startOutputPos, iter.getElems() + sizeChange );
         return m_updateResult.set( retValue, sizeChange );
     }
 
@@ -265,7 +271,7 @@ public class LongLongChainedMap implements ILongLongMap
      * @param value Value
      * @return A new chain and an old value
      */
-    private UpdateResult addToChainSlow( final int index, final Iterator iter, final Block inputBlock,
+    private UpdateResult addToChainSlow( final int index, final Iterator iter, final SingleThreadedBlock inputBlock,
                                          final int inputStartOffset, final long key, final long value )
     {
         boolean hasKey = false;
@@ -284,7 +290,7 @@ public class LongLongChainedMap implements ILongLongMap
         }
 
         final int elems = hasKey ? iter.getElems() : iter.getElems() + 1;
-        final Block outputBlock = getBlock( getMaxSpace( elems ) );
+        final SingleThreadedBlock outputBlock = getBlock( getMaxSpace( elems ) );
         final int startOutputPos = outputBlock.pos;
         final ByteArray output = getByteArray2(outputBlock);
 
@@ -323,7 +329,7 @@ public class LongLongChainedMap implements ILongLongMap
             writer.writePair(key, value);
 
         outputBlock.pos = output.position();
-        m_data.set( index, outputBlock.index, startOutputPos, m_data.maxEncodedLength() );
+        m_data.set( index, outputBlock.getIndex(), startOutputPos, m_data.maxEncodedLength() );
         return m_updateResult.set( retValue, hasKey ? 0 : 1 );
     }
 
@@ -354,7 +360,7 @@ public class LongLongChainedMap implements ILongLongMap
      */
     private UpdateResult removeKey( final long key, final int idx )
     {
-        final Block inputBlock = getBlockByIndex( m_data.getBlockIndex() );
+        final SingleThreadedBlock inputBlock = getBlockByIndex( m_data.getBlockIndex() );
         final int inputStartOffset = m_data.getOffset();
 
         final ByteArray input = getByteArray( inputBlock, inputStartOffset );
@@ -388,7 +394,7 @@ public class LongLongChainedMap implements ILongLongMap
         //we can not check for equality - once we have reached maxlen there will be a length field at the start of the record
         if ( !iter.hasNext() && iter.getElems() < m_data.maxEncodedLength() )
         {
-            m_data.set( idx, inputBlock.index, inputStartOffset, iter.getElems() - 1 );
+            m_data.set( idx, inputBlock.getIndex(), inputStartOffset, iter.getElems() - 1 );
             return m_updateResult.set( retValue, -1 );
         }
 
@@ -408,11 +414,17 @@ public class LongLongChainedMap implements ILongLongMap
                 writer.writePair( iter.getKey(), iter.getValue() );
         }
 
-        m_data.set( idx, inputBlock.index, inputStartOffset,
+        m_data.set( idx, inputBlock.getIndex(), inputStartOffset,
                                 iter.getElems() <= m_data.maxEncodedLength() ? iter.getElems() - 1 : m_data.maxEncodedLength() );
         return m_updateResult.set( retValue, -1 );
     }
 
+    /**
+     * Get map size. Note that this method does not lock the map to calculate the result, so it can return slightly incorrect
+     * values (including negative ones).
+     * Calling this method to frequently may cause the performance degradation of your code.
+     * @return The approximate current map size (temporarily may be negative)
+     */
     public long size() {
         return m_size;
     }
@@ -433,7 +445,7 @@ public class LongLongChainedMap implements ILongLongMap
 
     private void rehashInnerStep( final Buckets old, final ByteArray bar, final Iterator iter )
     {
-        final Block inputBlock = getBlockByIndex( old.getBlockIndex() );
+        final SingleThreadedBlock inputBlock = getBlockByIndex( old.getBlockIndex() );
 
         iter.reset( bar.reset( inputBlock.data, old.getOffset() ), old );
         if ( old.getBlockLength() == 1 ) //shortcut, no data copy for blocklen = 1
@@ -622,7 +634,7 @@ public class LongLongChainedMap implements ILongLongMap
         {
             if ( first ) {
                 m_keySerializer.write( k, buf );
-                m_valueSerializer.write(v, buf);
+                m_valueSerializer.write( v, buf );
                 first = false;
             }
             else
@@ -637,17 +649,17 @@ public class LongLongChainedMap implements ILongLongMap
         }
     }
 
-    private ByteArray getByteArray( final Block ar )
+    private ByteArray getByteArray( final SingleThreadedBlock ar )
     {
         return m_bar1.reset( ar.data, ar.pos );
     }
 
-    private ByteArray getByteArray2( final Block ar )
+    private ByteArray getByteArray2( final SingleThreadedBlock ar )
     {
         return m_bar2.reset( ar.data, ar.pos );
     }
 
-    private ByteArray getByteArray( final Block ar, final int offset )
+    private ByteArray getByteArray( final SingleThreadedBlock ar, final int offset )
     {
         return m_bar1.reset( ar.data, offset );
     }
@@ -657,12 +669,12 @@ public class LongLongChainedMap implements ILongLongMap
         return ( m_keySerializer.getMaxLength() + m_valueSerializer.getMaxLength() ) * entries + ( entries < 128 ? 1 : 5 ); //5 - theoretical maximal chain length
     }
 
-    private Block getBlock( final int bytes )
+    private SingleThreadedBlock getBlock( final int bytes )
     {
         return m_blockAllocator.getBlock( bytes, m_data );
     }
 
-    private Block getBlockByIndex( final int index )
+    private SingleThreadedBlock getBlockByIndex( final int index )
     {
         return m_blockAllocator.getBlockByIndex( index );
     }
@@ -701,7 +713,7 @@ public class LongLongChainedMap implements ILongLongMap
         if ( m_size > m_threshold )
         {
             final long multiplier = m_fillFactor <= 2 ? 2 : m_iFillFactor;
-            int newCapacity = Primes.findNextPrime((long) Math.ceil( multiplier * m_threshold / m_fillFactor ));
+            int newCapacity = Primes.findNextPrime( ( long ) Math.ceil( multiplier * m_threshold / m_fillFactor ) );
             //check if we got too close to the max array size, otherwise we will have to make a pretty useless resize when got close to 2G*fillFactor entries
             if ( newCapacity * 1.5 > Primes.getMaxIntPrime() )
                 newCapacity = Primes.getMaxIntPrime();

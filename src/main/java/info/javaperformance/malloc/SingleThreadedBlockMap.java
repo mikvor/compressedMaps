@@ -23,8 +23,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SingleThreadedBlockMap {
-    private final Map<Integer, Block> m_other = new HashMap<>( 16, 0.75f );
-    private Block[] m_data = new Block[ 1024 ];
+    private final Map<Integer, SingleThreadedBlock> m_other = new HashMap<>( 16, 0.75f );
+    private SingleThreadedBlock[] m_data = new SingleThreadedBlock[ 1024 ];
     private int m_blockBase = 0;
     private int m_arSize = 0;
 
@@ -33,26 +33,24 @@ public class SingleThreadedBlockMap {
         return index >= m_blockBase && index < m_blockBase + m_data.length;
     }
 
-    public Block get( final int index )
+    public SingleThreadedBlock get( final int index )
     {
-        if ( inRange( index ) )
-            return m_data[ index - m_blockBase ];
-        else
-            return m_other.get( index );
-        //return inRange( index ) ? m_data[ index - m_blockBase ] : m_other.get( index );
+        return inRange( index ) ? m_data[ index - m_blockBase ] : m_other.get( index );
     }
 
-    public void remove(final int index)
+    public SingleThreadedBlock remove(final int index)
     {
         if ( inRange( index ) ) {
-            m_data[index - m_blockBase] = null;
+            final SingleThreadedBlock res = m_data[ index - m_blockBase ];
+            m_data[ index - m_blockBase ] = null;
             --m_arSize;
+            return res;
         }
         else
-            m_other.remove( index );
+            return m_other.remove( index );
     }
 
-    public void put( final int index, final Block block )
+    public void put( final int index, final SingleThreadedBlock block )
     {
         if ( inRange( index ) ) {
             m_data[index - m_blockBase] = block;
@@ -63,11 +61,11 @@ public class SingleThreadedBlockMap {
             if ( m_blockBase > 0 && index < 0 )
             {
                 //wraparound at Integer.MAX_VALUE
-                for ( final Block b : m_data )
-                    if (b != null)
-                        m_other.put(b.index, b);
+                for ( final SingleThreadedBlock b : m_data )
+                    if ( b != null )
+                        m_other.put( b.getIndex(), b );
 
-                m_data = new Block[ 1024 ];
+                m_data = new SingleThreadedBlock[ 1024 ];
                 m_arSize = 1;
                 m_blockBase = index;
                 m_data[ 0 ] = block;
@@ -121,9 +119,9 @@ public class SingleThreadedBlockMap {
                             }
                         }
                         for ( int j = start; j < end; ++j ) {
-                            final Block b = m_data[ j ];
+                            final SingleThreadedBlock b = m_data[ j ];
                             if ( b != null )
-                                m_other.put( b.index, b );
+                                m_other.put( b.getIndex(), b );
                         }
                     }
                 }
@@ -138,14 +136,14 @@ public class SingleThreadedBlockMap {
                 }
             }
             //data is too sparse
-            m_data = new Block[ getNewBufferSize( 0, index ) ];
+            m_data = new SingleThreadedBlock[ getNewBufferSize( 0, index ) ];
             m_blockBase = index;
             m_data[ 0 ] = block;
             m_arSize = 1;
         }
     }
 
-    private void moveData( final int index, final Block block, final int startPos, final int remaining )
+    private void moveData( final int index, final SingleThreadedBlock block, final int startPos, final int remaining )
     {
         m_arSize = 1;
         final int newBufferSize = getNewBufferSize( remaining, m_blockBase );
@@ -160,7 +158,7 @@ public class SingleThreadedBlockMap {
             }
         }
         else {
-            final Block[] newAr = new Block[ newBufferSize ];
+            final SingleThreadedBlock[] newAr = new SingleThreadedBlock[ newBufferSize ];
             for ( int j = 0; j < remaining; ++j ) {
                 newAr[ j ] = m_data[ j + startPos ];
                 if ( m_data[ j + startPos ] != null )
