@@ -63,7 +63,7 @@ todo
  * All 3 main operations ( {@code get/put/remove} join rehashing once they detect it is going on). No thread can update
  * the map state once rehashing has started.
  */
-public class LongIntConcurrentChainedMap implements IConcurrentLongIntMap
+public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
 {
     private static final int CPU_NUMBER = Runtime.getRuntime().availableProcessors();
     private static final int NO_VALUE = 0;

@@ -22,7 +22,7 @@ package info.javaperformance.compressedmaps.concurrent.longint;
 /**
  * A minimalist interface implemented by concurrent maps
  */
-public interface IConcurrentLongIntMap {
+public interface ILongIntConcurrentMap {
     public int get( final long key );
     public int put( final long key, final int value );
     public int remove( final long key );

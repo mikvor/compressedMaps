@@ -33,7 +33,7 @@ public class LongIntConcurrentChainedMapTest extends TestCase
     private static final int[] THREADS = { 1, 2, 4, 8, 16, 32 };
 
 
-    protected IConcurrentLongIntMap getMap( final int size, final float ff )
+    protected ILongIntConcurrentMap getMap( final int size, final float ff )
     {
         return new LongIntConcurrentChainedMap( size, ff );
     }
@@ -49,7 +49,7 @@ public class LongIntConcurrentChainedMapTest extends TestCase
 
     private void testPutHelper( final int threads, final float ff ) throws InterruptedException {
         System.out.println( "Running testPutHelper( threads = " + threads +  ", ff = " + ff + " )" );
-        final IConcurrentLongIntMap map = getMap( INITIAL_CAPACITY, ff );
+        final ILongIntConcurrentMap map = getMap( INITIAL_CAPACITY, ff );
         final int SECTION = PUT_MAP_SIZE / threads;
         //initial insertion section
         {
@@ -91,9 +91,9 @@ public class LongIntConcurrentChainedMapTest extends TestCase
         private final long m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IConcurrentLongIntMap m_map;
+        private final ILongIntConcurrentMap m_map;
 
-        public Adder( long from, long to, CountDownLatch startGate, CountDownLatch endGate, IConcurrentLongIntMap map ) {
+        public Adder( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongIntConcurrentMap map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -123,9 +123,9 @@ public class LongIntConcurrentChainedMapTest extends TestCase
         private final long m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IConcurrentLongIntMap m_map;
+        private final ILongIntConcurrentMap m_map;
 
-        public Updater( long from, long to, CountDownLatch startGate, CountDownLatch endGate, IConcurrentLongIntMap map ) {
+        public Updater( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongIntConcurrentMap map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -161,7 +161,7 @@ public class LongIntConcurrentChainedMapTest extends TestCase
 
     private void testAddUpdateRemoveHelper( final int threads, final float ff ) throws InterruptedException {
         System.out.println( "Running testAddUpdateRemoveHelper( threads = " + threads + ", ff = " + ff + " )" );
-        final IConcurrentLongIntMap map = getMap( INITIAL_CAPACITY, ff );
+        final ILongIntConcurrentMap map = getMap( INITIAL_CAPACITY, ff );
         final int SECTION = PUT_MAP_SIZE / threads;
         {
             final CountDownLatch start = new CountDownLatch(threads);
@@ -213,9 +213,9 @@ public class LongIntConcurrentChainedMapTest extends TestCase
         private final long m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IConcurrentLongIntMap m_map;
+        private final ILongIntConcurrentMap m_map;
 
-        public AddUpdateRemover( long from, long to, CountDownLatch startGate, CountDownLatch endGate, IConcurrentLongIntMap map ) {
+        public AddUpdateRemover( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongIntConcurrentMap map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -258,9 +258,9 @@ public class LongIntConcurrentChainedMapTest extends TestCase
         private final long m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IConcurrentLongIntMap m_map;
+        private final ILongIntConcurrentMap m_map;
 
-        public Remover( long from, long to, CountDownLatch startGate, CountDownLatch endGate, IConcurrentLongIntMap map ) {
+        public Remover( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongIntConcurrentMap map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;

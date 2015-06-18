@@ -19,7 +19,7 @@
 
 package info.javaperformance.compressedmaps;
 
-import info.javaperformance.compressedmaps.concurrent.longint.IConcurrentLongIntMap;
+import info.javaperformance.compressedmaps.concurrent.longint.ILongIntConcurrentMap;
 import info.javaperformance.compressedmaps.concurrent.longint.LongIntConcurrentChainedMap;
 import info.javaperformance.compressedmaps.normal.intint.IIntIntMap;
 import info.javaperformance.compressedmaps.normal.intint.IntIntChainedMap;
@@ -101,12 +101,12 @@ public class CompressedMapFactory
     //  Concurrent maps
     /////////////////////////////////////////////////////////////
 
-    public IConcurrentLongIntMap concurrentLongIntMap( final long size, final float fillFactor )
+    public ILongIntConcurrentMap concurrentLongIntMap( final long size, final float fillFactor )
     {
         return new LongIntConcurrentChainedMap( size, fillFactor );
     }
 
-    public IConcurrentLongIntMap concurrentLongIntMap( final long size, final float fillFactor,
+    public ILongIntConcurrentMap concurrentLongIntMap( final long size, final float fillFactor,
                                                        final ILongSerializer keySerializer, final IIntSerializer valueSerializer )
     {
         return new LongIntConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
