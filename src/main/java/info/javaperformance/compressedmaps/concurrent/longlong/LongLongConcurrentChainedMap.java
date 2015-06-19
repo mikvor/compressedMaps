@@ -17,7 +17,7 @@
  *      Mikhail Vorontsov
  */
 
-package info.javaperformance.compressedmaps.concurrent.longint;
+package info.javaperformance.compressedmaps.concurrent.longlong;
 
 import info.javaperformance.malloc.Block;
 import info.javaperformance.malloc.ConcurrentBlockAllocator;
@@ -64,10 +64,10 @@ todo
  * All 3 main operations ({@code get/put/remove}) join rehashing once they detect it is going on. No thread can update
  * the map state once rehashing has started.
  */
-public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
+public class LongLongConcurrentChainedMap implements ILongLongConcurrentMap
 {
     private static final int CPU_NUMBER = Runtime.getRuntime().availableProcessors();
-    private static final int NO_VALUE = 0;
+    private static final long NO_VALUE = 0;
 
     /*
     We store multiple reusable objects here. They are needed to avoid unnecessary object allocations.
@@ -88,7 +88,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
     /** Key serializer */
     private final ILongSerializer m_keySerializer;
     /** Value serializer */
-    private final IIntSerializer m_valueSerializer;
+    private final ILongSerializer m_valueSerializer;
     /** Original fill factor */
     private final float m_fillFactor;
     /**
@@ -122,9 +122,9 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
      * @throws IllegalArgumentException If {@code fillFactor > 16} or {@code fillFactor <= 0.01}
      */
-    public LongIntConcurrentChainedMap( final long size, float fillFactor )
+    public LongLongConcurrentChainedMap( final long size, float fillFactor )
     {
-        this( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultIntSerializer.INSTANCE );
+        this( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultLongSerializer.INSTANCE );
     }
 
     /**
@@ -142,8 +142,8 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
      * @throws IllegalArgumentException If {@code fillFactor > 16} or {@code fillFactor <= 0.01}
      */
-    public LongIntConcurrentChainedMap( final long size, final float fillFactor,
-                                       final ILongSerializer keySerializer, final IIntSerializer valueSerializer )
+    public LongLongConcurrentChainedMap( final long size, final float fillFactor,
+                                       final ILongSerializer keySerializer, final ILongSerializer valueSerializer )
     {
         Objects.requireNonNull( keySerializer, "Key serializer must be provided!" );
         Objects.requireNonNull( valueSerializer, "Value serializer must be provided!" );
@@ -183,7 +183,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
     }
 
     @Override
-    public int get( final long key )
+    public long get( final long key )
     {
         final Buffers buffers = m_data.get();
         if ( buffers.old != null )
@@ -220,7 +220,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
     }
 
     @Override
-    public int put( final long key, final int value )
+    public long put( final long key, final long value )
     {
         Buffers buffers = m_data.get();
         if ( buffers.old != null ) {
@@ -256,7 +256,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
                 if (res.input != null) //could be null for new bucket
                     res.input.decreaseEntries();
 
-                final int ret = res.retValue; //must be saved in case of rehash
+                final long ret = res.retValue; //must be saved in case of rehash
                 changeSize(res.sizeChange, buffers, getBlockLength( res.chain ) );
                 return ret;
             }
@@ -282,7 +282,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
     /*
     A version of {@code put}, which is called from rehashing only. It does not need to detect rehashing in progress.
      */
-    private void doPutRehash( final long[] tab, final long key, final int value )
+    private void doPutRehash( final long[] tab, final long key, final long value )
     {
         final int idx = getIndex( key, tab.length );
         long bucket = getBucket( tab, idx );
@@ -318,7 +318,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
      * @param value Value
      * @return A long pointing to the written record
      */
-    private long singleEntry( final Block output, final long key, final int value )
+    private long singleEntry( final Block output, final long key, final long value )
     {
         final int startPos = output.pos;
         final ByteArray bar = getByteArray(output);
@@ -335,7 +335,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
      * @param value Value
      * @return A new chain and an old value
      */
-    private UpdateResult addToChain( final long bucket, final long key, final int value )
+    private UpdateResult addToChain( final long bucket, final long key, final long value )
     {
         if ( bucket == EMPTY ) {
             final Block output = m_blockAllocator.getThreadLocalBlock( m_singleEntryLength );
@@ -360,7 +360,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
         outputBlock.increaseEntries(); //allocate block
         final Writer writer = getWriter().reset( baOutput );
 
-        int retValue = NO_VALUE;
+        long retValue = NO_VALUE;
         boolean inserted = false, updated = false;
 
         while ( iter.hasNext() )
@@ -405,10 +405,10 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
      * @return A new chain and an old value
      */
     private UpdateResult addToChainSlow( final long bucket, final Iterator iter, final Block inputBlock,
-                                         final int inputStartOffset, final long key, final int value )
+                                         final int inputStartOffset, final long key, final long value )
     {
         boolean hasKey = false;
-        int retValue = NO_VALUE;
+        long retValue = NO_VALUE;
         while ( iter.hasNext() )
         {
             iter.advance();
@@ -466,7 +466,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
     }
 
     @Override
-    public int remove( final long key )
+    public long remove( final long key )
     {
         Buffers buffers = m_data.get();
         if ( buffers.old != null ) {
@@ -507,7 +507,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
                     //commit usage changes
                     res.input.decreaseEntries();
 
-                    final int ret = res.retValue; //must be saved in case of rehash
+                    final long ret = res.retValue; //must be saved in case of rehash
                     changeSize( res.sizeChange, buffers, getBlockLength( res.chain ) );
                     return ret;
                 }
@@ -550,7 +550,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
         final Iterator iter = getIterator().reset( input, getBlockLength( bucket ) );
 
         boolean hasKey = false;
-        int retValue = NO_VALUE;
+        long retValue = NO_VALUE;
         while ( iter.hasNext() )
         {
             iter.advance();
@@ -735,13 +735,13 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
         /** Current entry key, initialized by {@code advance} call */
         private long key;
         /** Current entry value, initialized by {@code advance} call */
-        private int value;
+        private long value;
         /** Serialization for keys */
         private final ILongSerializer m_keySerializer;
         /** Serialization for values */
-        private final IIntSerializer m_valueSerializer;
+        private final ILongSerializer m_valueSerializer;
 
-        public Iterator( final ILongSerializer keySerializer, final IIntSerializer valueSerializer ) {
+        public Iterator( final ILongSerializer keySerializer, final ILongSerializer valueSerializer ) {
             m_keySerializer = keySerializer;
             m_valueSerializer = valueSerializer;
         }
@@ -794,7 +794,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
         /**
          * @return A value read by the last {@code advance} call
          */
-        public int getValue() {
+        public long getValue() {
             return value;
         }
 
@@ -823,13 +823,13 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
         /** Previously written key (used for delta encoding) */
         private long prevKey = 0;
         /** Previously written value (used for delta encoding) */
-        private int prevValue = 0;
+        private long prevValue = 0;
         /** Serialization for keys */
         private final ILongSerializer m_keySerializer;
         /** Serialization for values */
-        private final IIntSerializer m_valueSerializer;
+        private final ILongSerializer m_valueSerializer;
 
-        public Writer( final ILongSerializer keySerializer, final IIntSerializer valueSerializer)
+        public Writer( final ILongSerializer keySerializer, final ILongSerializer valueSerializer)
         {
             m_keySerializer = keySerializer;
             m_valueSerializer = valueSerializer;
@@ -869,7 +869,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
          * @param k Key to write
          * @param v Value to write
          */
-        public void writePair( final long k, final int v )
+        public void writePair( final long k, final long v )
         {
             if ( first ) {
                 m_keySerializer.write( k, buf );
@@ -963,7 +963,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
     private static class UpdateResult
     {
         public long chain;
-        public int retValue;
+        public long retValue;
         public int sizeChange;
         public Block input;
         public Block output;
@@ -972,7 +972,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
         public UpdateResult() {
         }
 
-        public UpdateResult set( long chain, int retValue, int sizeChange, Block input, Block output, int outputPrevStart )
+        public UpdateResult set( long chain, long retValue, int sizeChange, Block input, Block output, int outputPrevStart )
         {
             this.chain = chain;
             this.retValue = retValue;

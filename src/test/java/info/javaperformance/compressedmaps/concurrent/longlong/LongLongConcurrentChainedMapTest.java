@@ -17,14 +17,14 @@
  *      Mikhail Vorontsov
  */
 
-package info.javaperformance.compressedmaps.concurrent.longint;
+package info.javaperformance.compressedmaps.concurrent.longlong;
 
 import junit.framework.TestCase;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class LongIntConcurrentChainedMapTest extends TestCase
+public class LongLongConcurrentChainedMapTest extends TestCase
 {
     private static final int PUT_MAP_SIZE = 1 * 1000 * 1000;
     private static final int INITIAL_CAPACITY = 1;
@@ -33,9 +33,9 @@ public class LongIntConcurrentChainedMapTest extends TestCase
     private static final int[] THREADS = { 1, 2, 4, 8, 16, 32 };
 
 
-    protected ILongIntConcurrentMap getMap( final int size, final float ff )
+    protected ILongLongConcurrentMap getMap( final int size, final float ff )
     {
-        return new LongIntConcurrentChainedMap( size, ff );
+        return new LongLongConcurrentChainedMap( size, ff );
     }
 
     /*
@@ -49,7 +49,7 @@ public class LongIntConcurrentChainedMapTest extends TestCase
 
     private void testPutHelper( final int threads, final float ff ) throws InterruptedException {
         System.out.println( "Running testPutHelper( threads = " + threads +  ", ff = " + ff + " )" );
-        final ILongIntConcurrentMap map = getMap( INITIAL_CAPACITY, ff );
+        final ILongLongConcurrentMap map = getMap( INITIAL_CAPACITY, ff );
         final int SECTION = PUT_MAP_SIZE / threads;
         //initial insertion section
         {
@@ -91,9 +91,9 @@ public class LongIntConcurrentChainedMapTest extends TestCase
         private final long m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final ILongIntConcurrentMap m_map;
+        private final ILongLongConcurrentMap m_map;
 
-        public Adder( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongIntConcurrentMap map ) {
+        public Adder( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongLongConcurrentMap map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -107,8 +107,8 @@ public class LongIntConcurrentChainedMapTest extends TestCase
                 m_startGate.countDown();
                 m_startGate.await();
                 for ( long n = m_from; n < m_to; ++n ) {
-                    assertEquals(0, m_map.put(n, (int) n));
-                    assertEquals( (int) n, m_map.get( n ) );
+                    assertEquals(0, m_map.put(n, (long) n));
+                    assertEquals( (long) n, m_map.get( n ) );
                 }
                 m_endGate.countDown();
             } catch (Throwable e) {
@@ -123,9 +123,9 @@ public class LongIntConcurrentChainedMapTest extends TestCase
         private final long m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final ILongIntConcurrentMap m_map;
+        private final ILongLongConcurrentMap m_map;
 
-        public Updater( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongIntConcurrentMap map ) {
+        public Updater( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongLongConcurrentMap map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -139,7 +139,7 @@ public class LongIntConcurrentChainedMapTest extends TestCase
                 m_startGate.countDown();
                 m_startGate.await();
                 for ( long n = m_from; n < m_to; ++n ) {
-                    assertEquals( (int) n, m_map.put(n, 1));
+                    assertEquals( (long) n, m_map.put(n, 1));
                     assertEquals( 1, m_map.get( n ) );
                 }
                 m_endGate.countDown();
@@ -161,7 +161,7 @@ public class LongIntConcurrentChainedMapTest extends TestCase
 
     private void testAddUpdateRemoveHelper( final int threads, final float ff ) throws InterruptedException {
         System.out.println( "Running testAddUpdateRemoveHelper( threads = " + threads + ", ff = " + ff + " )" );
-        final ILongIntConcurrentMap map = getMap( INITIAL_CAPACITY, ff );
+        final ILongLongConcurrentMap map = getMap( INITIAL_CAPACITY, ff );
         final int SECTION = PUT_MAP_SIZE / threads;
         {
             final CountDownLatch start = new CountDownLatch( threads );
@@ -213,9 +213,9 @@ public class LongIntConcurrentChainedMapTest extends TestCase
         private final long m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final ILongIntConcurrentMap m_map;
+        private final ILongLongConcurrentMap m_map;
 
-        public AddUpdateRemover( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongIntConcurrentMap map ) {
+        public AddUpdateRemover( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongLongConcurrentMap map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -235,8 +235,8 @@ public class LongIntConcurrentChainedMapTest extends TestCase
                     assertEquals( 1, m_map.get( add++ ) );
                     assertEquals( 0, m_map.put( add, 1 ) );
                     assertEquals( 1, m_map.get( add++ ) );
-                    final int preRemove = m_map.get( remove );
-                    final int removeRes = m_map.remove(remove++);
+                    final long preRemove = m_map.get( remove );
+                    final long removeRes = m_map.remove(remove++);
                     if ( removeRes != 1 )
                         fail( "failed for remove = " + ( remove - 1 ) + ", map.get(" + (remove - 1) + ") = " + m_map.get( remove-1) + ", preRemove = " + preRemove + ", removeRes = " + removeRes );
                 }
@@ -258,9 +258,9 @@ public class LongIntConcurrentChainedMapTest extends TestCase
         private final long m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final ILongIntConcurrentMap m_map;
+        private final ILongLongConcurrentMap m_map;
 
-        public Remover( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongIntConcurrentMap map ) {
+        public Remover( long from, long to, CountDownLatch startGate, CountDownLatch endGate, ILongLongConcurrentMap map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
