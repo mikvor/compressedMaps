@@ -83,6 +83,16 @@ public class Tools {
         return (i & NO_SIGN_MASK ) % capacity;
     }
 
+    public static int getIndexFast( final float key, final int capacity )
+    {
+        return getIndexFast( Float.floatToIntBits( key ), capacity );
+    }
+
+    public static int getIndexFast( final double key, final int capacity )
+    {
+        return getIndexFast( Double.doubleToLongBits( key ), capacity );
+    }
+
     /**
      * Get the next power of 2
      * @param x Value

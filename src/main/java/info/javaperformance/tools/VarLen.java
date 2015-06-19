@@ -130,37 +130,6 @@ public class VarLen {
         return readRawVarint64SlowPath(buf);
     }
 
-    public static void skipNumber( final ByteArray buf )
-    {
-        for ( int i = 0; i < 10; ++i )
-        {
-            if ( buf.get() >= 0 )
-                return;
-        }
-    }
-
-    private final static int P7 = 1 << 7;
-    private final static int P14 = 1 << 14;
-    private final static int P21 = 1 << 21;
-    private final static int P28 = 1 << 28;
-
-    public static boolean areSameLengthIntsSigned( final int v1, final int v2 )
-    {
-        final int len1 = Integer.highestOneBit( encodeZigZag32( v1 ) );
-        final int len2 = Integer.highestOneBit( encodeZigZag32( v2 ) );
-        if ( len1 < P7 )
-            return len2 < P7;
-        else if ( len1 < P14 )
-            return len2 >= P7 && len2 < P14;
-        else if ( len1 < P21 )
-            return len2 >= P14 && len2 < P21;
-        else if ( len1 < P28 )
-            return len2 >= P21 && len2 < P28;
-        else
-            return len2 >= P28;
-    }
-
-
     /** Encode and write a varint. */
     private static void writeRawVarint64( long value, final ByteArray buf) {
       while (true) {
