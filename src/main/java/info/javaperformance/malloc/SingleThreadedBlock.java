@@ -37,8 +37,6 @@ public class SingleThreadedBlock {
     /** Have we filled the whole block? */
     private boolean m_writeDone;
 
-    private static int m_count = 0;
-
     public SingleThreadedBlock( final SingleThreadedBlockAllocator parent, final int index, final int size )
     {
         this.parent = parent;
@@ -46,9 +44,6 @@ public class SingleThreadedBlock {
         data = new byte[ size ];
         pos = 0;
         m_writeDone = false;
-        ++m_count;
-        if ( m_count % 100 == 0 )
-            System.out.println( "Allocated blocks = " + m_count );
     }
 
     /**
