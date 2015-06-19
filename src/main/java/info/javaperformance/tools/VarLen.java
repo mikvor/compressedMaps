@@ -113,21 +113,21 @@ public class VarLen {
 
     public static long readSignedLong( final ByteArray buf )
     {
-        return decodeZigZag64( readRawVarint64SlowPath(buf) );
+        return decodeZigZag64( readRawVarint64(buf) );
     }
 
     public static int readSignedInt( final ByteArray buf )
     {
-        return decodeZigZag32((int) readRawVarint64SlowPath(buf));
+        return decodeZigZag32(readRawVarint32(buf));
     }
 
     public static int readUnsignedInt( final ByteArray buf )
     {
-        return (int) readRawVarint64SlowPath(buf);
+        return readRawVarint32(buf);
     }
     public static long readUnsignedLong( final ByteArray buf )
     {
-        return readRawVarint64SlowPath(buf);
+        return readRawVarint64(buf);
     }
 
     /** Encode and write a varint. */
@@ -246,22 +246,10 @@ public class VarLen {
           x ^= ((long) buf.get() << 56);
           x ^= (~0L << 7) ^ (~0L << 14) ^ (~0L << 21) ^ (~0L << 28) ^ (~0L << 35) ^ (~0L << 42)
               ^ (~0L << 49) ^ (~0L << 56);
-          if ( buf.get() < 0 )
-              throw new RuntimeException("Malformed input!");
+          if ( x < 0 )
+              if ( buf.get() < 0 ) //the last bit
+                  throw new RuntimeException("Malformed input!");
         }
         return x;
     }
-
-    private static long readRawVarint64SlowPath(final ByteArray buf ) {
-       long result = 0;
-       for (int shift = 0; shift < 64; shift += 7) {
-           final byte b = buf.get();
-           result |= (long) (b & 0x7F) << shift;
-           if ((b & 0x80) == 0) {
-               return result;
-           }
-       }
-       throw new RuntimeException("Can't happen");
-   }
-
 }
