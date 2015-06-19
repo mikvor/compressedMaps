@@ -23,6 +23,8 @@ package info.javaperformance.tools;
  * Miscellaneous methods
  */
 public class Tools {
+    private static final int NO_SIGN_MASK = 0x7fffffff;
+
     /**
      * Murmur3 algorithm.
      * See description here: https://code.google.com/p/smhasher/wiki/MurmurHash3
@@ -59,20 +61,26 @@ public class Tools {
     {
         final long v = Tools.murmur3(key);
         int i = (int) (v ^ ( v >>> 32 ));
-        return (i & 0x7fffffff) % capacity;
-    }
-
-    public static int getIndexFast( final long key, final int capacity )
-    {
-        int i = (int) (key ^ ( key >>> 32 ));
-        return (i & 0x7fffffff) % capacity;
+        return (i & NO_SIGN_MASK ) % capacity;
     }
 
     public static int getIndex( final int key, final int capacity )
     {
         final int v = Tools.murmur3(key);
         int i = (v ^ ( v >>> 16 ));
-        return (i & 0x7fffffff) % capacity;
+        return (i & NO_SIGN_MASK ) % capacity;
+    }
+
+    public static int getIndexFast( final int key, final int capacity )
+    {
+        final int i = key ^ ( key >>> 16 );
+        return (i & NO_SIGN_MASK ) % capacity;
+    }
+
+    public static int getIndexFast( final long key, final int capacity )
+    {
+        final int i = (int) (key ^ ( key >>> 32 ));
+        return (i & NO_SIGN_MASK ) % capacity;
     }
 
     /**
