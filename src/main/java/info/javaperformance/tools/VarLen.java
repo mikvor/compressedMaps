@@ -62,35 +62,9 @@ public class VarLen {
   // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   */
 
-    /**
-     * Encode a ZigZag-encoded 32-bit value.  ZigZag encodes signed integers
-     * into values that can be efficiently encoded with varint.  (Otherwise,
-     * negative values must be sign-extended to 64 bits to be varint encoded,
-     * thus always taking 10 bytes on the wire.)
-     *
-     * @param n A signed 32-bit integer.
-     * @return An unsigned 32-bit integer, stored in a signed int because
-     *         Java has no explicit unsigned support.
-     */
-    static int encodeZigZag32(final int n) {
-      // Note:  the right-shift must be arithmetic
-      return (n << 1) ^ (n >> 31);
-    }
-
-    /**
-     * Encode a ZigZag-encoded 64-bit value.  ZigZag encodes signed integers
-     * into values that can be efficiently encoded with varint.  (Otherwise,
-     * negative values must be sign-extended to 64 bits to be varint encoded,
-     * thus always taking 10 bytes on the wire.)
-     *
-     * @param n A signed 64-bit integer.
-     * @return An unsigned 64-bit integer, stored in a signed int because
-     *         Java has no explicit unsigned support.
-     */
-    static long encodeZigZag64(final long n) {
-      // Note:  the right-shift must be arithmetic
-      return (n << 1) ^ (n >> 63);
-    }
+    /////////////////////////////////////////////////
+    // Public writing methods
+    /////////////////////////////////////////////////
 
     public static void writeSignedLong( final long v, final ByteArray buf )
     {
@@ -99,36 +73,65 @@ public class VarLen {
 
     public static void writeSignedInt( final int v, final ByteArray buf )
     {
-        writeRawVarint32(encodeZigZag32(v), buf);
+        writeRawVarint32( encodeZigZag32( v ), buf );
     }
 
     public static void writeUnsignedInt( final int v, final ByteArray buf )
     {
-        writeRawVarint32(v, buf);
+        writeRawVarint32( v, buf );
     }
     public static void writeUnsignedLong( final long v, final ByteArray buf )
     {
-        writeRawVarint64(v, buf);
+        writeRawVarint64( v, buf );
     }
+
+    public static void writeFloat( final float v, final ByteArray buf )
+    {
+        writeRawFixed32( Float.floatToIntBits( v ), buf );
+    }
+
+    public static void writeDouble( final double v, final ByteArray buf )
+    {
+        writeRawFixed64( Double.doubleToLongBits( v ), buf );
+    }
+
+    ///////////////////////////////////////////////////////////////////
+    //  Public reading methods
+    ///////////////////////////////////////////////////////////////////
 
     public static long readSignedLong( final ByteArray buf )
     {
-        return decodeZigZag64( readRawVarint64(buf) );
+        return decodeZigZag64( readRawVarint64( buf ) );
     }
 
     public static int readSignedInt( final ByteArray buf )
     {
-        return decodeZigZag32(readRawVarint32(buf));
+        return decodeZigZag32( readRawVarint32( buf ) );
     }
 
     public static int readUnsignedInt( final ByteArray buf )
     {
-        return readRawVarint32(buf);
+        return readRawVarint32( buf );
     }
     public static long readUnsignedLong( final ByteArray buf )
     {
-        return readRawVarint64(buf);
+        return readRawVarint64( buf );
     }
+
+    public static float readFloat( final ByteArray buf )
+    {
+        return Float.intBitsToFloat( readRawFixed32( buf ) );
+    }
+
+    public static double readDouble( final ByteArray buf )
+    {
+        return Double.longBitsToDouble( readRawFixed64( buf ) );
+    }
+
+    ///////////////////////////////////////////////////////////////////
+    //  Private (de)serialization methods
+    ///////////////////////////////////////////////////////////////////
+
 
     /** Encode and write a varint. */
     private static void writeRawVarint64( long value, final ByteArray buf) {
@@ -248,8 +251,79 @@ public class VarLen {
               ^ (~0L << 49) ^ (~0L << 56);
           if ( x < 0 )
               if ( buf.get() < 0 ) //the last bit
-                  throw new RuntimeException("Malformed input!");
+                  throw new RuntimeException( "Malformed input!" );
         }
         return x;
     }
+
+    private static int readRawFixed32( final ByteArray buf )
+    {
+        return (((buf.get() & 0xff))       |
+                ((buf.get() & 0xff) <<  8) |
+                ((buf.get() & 0xff) << 16) |
+                ((buf.get() & 0xff) << 24));
+    }
+
+    private static long readRawFixed64( final ByteArray buf )
+    {
+        return ((((long) buf.get() & 0xffL))       |
+                (((long) buf.get() & 0xffL) <<  8) |
+                (((long) buf.get() & 0xffL) << 16) |
+                (((long) buf.get() & 0xffL) << 24) |
+                (((long) buf.get() & 0xffL) << 32) |
+                (((long) buf.get() & 0xffL) << 40) |
+                (((long) buf.get() & 0xffL) << 48) |
+                (((long) buf.get() & 0xffL) << 56));
+    }
+
+    private static void writeRawFixed32( final int value, final ByteArray buf )
+    {
+        buf.put(   value         & 0xFF );
+        buf.put( ( value >>  8 ) & 0xFF );
+        buf.put( ( value >> 16 ) & 0xFF );
+        buf.put( ( value >> 24 ) & 0xFF );
+    }
+
+    private static void writeRawFixed64( final long value, final ByteArray buf )
+    {
+        buf.put( ( int ) ( value )       & 0xFF );
+        buf.put( ( int ) ( value >> 8 )  & 0xFF );
+        buf.put( ( int ) ( value >> 16 ) & 0xFF );
+        buf.put( ( int ) ( value >> 24 ) & 0xFF );
+        buf.put( ( int ) ( value >> 32 ) & 0xFF );
+        buf.put( ( int ) ( value >> 40 ) & 0xFF );
+        buf.put( ( int ) ( value >> 48 ) & 0xFF );
+        buf.put( ( int ) ( value >> 56 ) & 0xFF );
+    }
+
+    /**
+     * Encode a ZigZag-encoded 32-bit value.  ZigZag encodes signed integers
+     * into values that can be efficiently encoded with varint.  (Otherwise,
+     * negative values must be sign-extended to 64 bits to be varint encoded,
+     * thus always taking 10 bytes on the wire.)
+     *
+     * @param n A signed 32-bit integer.
+     * @return An unsigned 32-bit integer, stored in a signed int because
+     *         Java has no explicit unsigned support.
+     */
+    private static int encodeZigZag32(final int n) {
+      // Note:  the right-shift must be arithmetic
+      return (n << 1) ^ (n >> 31);
+    }
+
+    /**
+     * Encode a ZigZag-encoded 64-bit value.  ZigZag encodes signed integers
+     * into values that can be efficiently encoded with varint.  (Otherwise,
+     * negative values must be sign-extended to 64 bits to be varint encoded,
+     * thus always taking 10 bytes on the wire.)
+     *
+     * @param n A signed 64-bit integer.
+     * @return An unsigned 64-bit integer, stored in a signed int because
+     *         Java has no explicit unsigned support.
+     */
+    private static long encodeZigZag64(final long n) {
+      // Note:  the right-shift must be arithmetic
+      return (n << 1) ^ (n >> 63);
+    }
+
 }

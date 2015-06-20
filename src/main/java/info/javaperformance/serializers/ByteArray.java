@@ -72,6 +72,11 @@ public class ByteArray {
         m_buf[ m_ptr++ ] = v;
     }
 
+    public void put( final int v )
+    {
+        m_buf[ m_ptr++ ] = ( byte ) v;
+    }
+
     public byte[] array()
     {
         return m_buf;
