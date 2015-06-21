@@ -31,17 +31,17 @@ public final class DefaultIntSerializer implements IIntSerializer
     private DefaultIntSerializer(){}
 
     @Override
-    public void write(int v, ByteArray buf) {
+    public void write( final int v, final ByteArray buf ) {
         VarLen.writeSignedInt( v, buf );
     }
 
     @Override
-    public int read(ByteArray buf) {
+    public int read( final ByteArray buf ) {
         return VarLen.readSignedInt( buf );
     }
 
     @Override
-    public void writeDelta(int prevValue, int curValue, ByteArray buf, boolean sorted) {
+    public void writeDelta( final int prevValue, final int curValue, final ByteArray buf, final boolean sorted ) {
         if ( sorted )
             VarLen.writeUnsignedInt( curValue - prevValue, buf );
         else
@@ -49,8 +49,8 @@ public final class DefaultIntSerializer implements IIntSerializer
     }
 
     @Override
-    public int readDelta(int prevValue, ByteArray buf, boolean sorted) {
-        return prevValue + (sorted ? VarLen.readUnsignedInt( buf ) : VarLen.readSignedInt(buf));
+    public int readDelta( final int prevValue, final ByteArray buf, final boolean sorted ) {
+        return prevValue + ( sorted ? VarLen.readUnsignedInt( buf ) : VarLen.readSignedInt( buf ) );
     }
 
     @Override

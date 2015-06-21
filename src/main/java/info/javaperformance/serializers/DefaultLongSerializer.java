@@ -22,7 +22,7 @@ package info.javaperformance.serializers;
 import info.javaperformance.tools.VarLen;
 
 /**
- * Default serialization for using varlen encoding
+ * Default serialization using varlen encoding
  */
 public final class DefaultLongSerializer implements ILongSerializer
 {
@@ -31,17 +31,17 @@ public final class DefaultLongSerializer implements ILongSerializer
     private DefaultLongSerializer(){}
 
     @Override
-    public void write(long v, ByteArray buf) {
+    public void write( final long v, final ByteArray buf ) {
         VarLen.writeSignedLong( v, buf );
     }
 
     @Override
-    public long read(ByteArray buf) {
+    public long read( final ByteArray buf ) {
         return VarLen.readSignedLong( buf );
     }
 
     @Override
-    public void writeDelta(long prevValue, long curValue, ByteArray buf, boolean sorted) {
+    public void writeDelta( final long prevValue, final long curValue, final ByteArray buf, final boolean sorted ) {
         if ( sorted )
             VarLen.writeUnsignedLong( curValue - prevValue, buf );
         else
@@ -49,11 +49,8 @@ public final class DefaultLongSerializer implements ILongSerializer
     }
 
     @Override
-    public long readDelta(long prevValue, ByteArray buf, boolean sorted) {
-        if ( sorted )
-            return prevValue + VarLen.readUnsignedLong(buf);
-        else
-            return prevValue + VarLen.readSignedLong( buf );
+    public long readDelta( final long prevValue, final ByteArray buf, final boolean sorted ) {
+        return prevValue + ( sorted ? VarLen.readUnsignedLong( buf ) : VarLen.readSignedLong( buf ) );
     }
 
     @Override

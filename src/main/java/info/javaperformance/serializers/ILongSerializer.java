@@ -55,4 +55,5 @@ public interface ILongSerializer {
      * @return The maximal length of a value binary representation in this encoding
      */
     public int getMaxLength();
+
 }
