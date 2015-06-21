@@ -15,5 +15,5 @@ We also allow users to specify the memory block recycling limit - the map will k
 and then reuse them when a new block should be allocated. This option may reduce your application GC load on the assumption
 that memory blocks are kept alive long enough to be promoted in the old heap generation.
 
-The entry point for all map users is info.javaperformance.compressedmaps.CompressedMapsFactory class, which provides
+The entry point for all map users are info.javaperformance.compressedmaps.<Type>MapFactory classes, which provides
 factory methods for all maps implemented in the library.
