@@ -19,6 +19,7 @@
 
 package info.javaperformance.compressedmaps.normal.doubles;
 
+import info.javaperformance.compressedmaps.DoubleMapFactory;
 import junit.framework.TestCase;
 
 import java.util.HashSet;
@@ -32,13 +33,11 @@ public class DoubleFloatChainedMapTest extends TestCase
     private final static float[] FILL_FACTORS = { 0.25f, 0.5f, 0.75f, 0.9f, 0.99f, 1f, 2f, 3f, 5f, 16f };
     private final int SIZE = 1000000;
     private static final float ZERO = 0;
-    private static final float ONE = 1;
-    private static final float TWO = 2;
 
 
     protected IDoubleFloatMap makeMap( final long size, final float fillFactor )
     {
-        return new DoubleFloatChainedMap( size, fillFactor );
+        return DoubleMapFactory.singleThreadedDoubleFloatMap( size, fillFactor );
     }
 
     /**

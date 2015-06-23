@@ -19,6 +19,7 @@
 
 package info.javaperformance.compressedmaps.normal.longs;
 
+import info.javaperformance.compressedmaps.LongMapFactory;
 import junit.framework.TestCase;
 
 import java.util.HashSet;
@@ -32,13 +33,11 @@ public class LongLongChainedMapTest extends TestCase
     private final static float[] FILL_FACTORS = { 0.25f, 0.5f, 0.75f, 0.9f, 0.99f, 1f, 2f, 3f, 5f, 16f };
     private final int SIZE = 1000000;
     private static final long ZERO = 0;
-    private static final long ONE = 1;
-    private static final long TWO = 2;
 
 
     protected ILongLongMap makeMap( final long size, final float fillFactor )
     {
-        return new LongLongChainedMap( size, fillFactor );
+        return LongMapFactory.singleThreadedLongLongMap( size, fillFactor );
     }
 
     /**

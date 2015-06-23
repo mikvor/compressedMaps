@@ -19,6 +19,7 @@
 
 package info.javaperformance.compressedmaps.concurrent.longs;
 
+import info.javaperformance.compressedmaps.LongMapFactory;
 import junit.framework.TestCase;
 
 import java.util.concurrent.CountDownLatch;
@@ -26,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 public class LongLongConcurrentChainedMapTest extends TestCase
 {
-    private static final int PUT_MAP_SIZE = 1 * 1000 * 1000;
+    private static final int PUT_MAP_SIZE = 1000 * 1000;
     private static final int INITIAL_CAPACITY = 1;
     private static final long ZERO = 0;
     private static final long ONE = 1;
@@ -38,7 +39,7 @@ public class LongLongConcurrentChainedMapTest extends TestCase
 
     protected ILongLongConcurrentMap getMap( final int size, final float ff )
     {
-        return new LongLongConcurrentChainedMap( size, ff );
+        return LongMapFactory.concurrentLongLongMap( size, ff );
     }
 
     /*

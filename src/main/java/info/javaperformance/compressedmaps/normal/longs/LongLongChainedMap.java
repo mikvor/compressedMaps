@@ -79,24 +79,6 @@ public class LongLongChainedMap implements ILongLongMap
     private final int m_singleEntryLength;
 
     /**
-     * Create a map with a given size and fill factor. We will use the default varlen serializers in this constructor.
-     * @param size Expected map size
-     * @param fillFactor Map fill factor. Fill factors over 1.0 are supported and preferred for this map. This implementation
-     *                   puts a soft limit of 16 for the fill factors. Such fill factors make buckets too long, which
-     *                   increases the access/update costs, but the difference in the compression is getting smaller
-     *                   and smaller.
-     *                   Using fill factors below 1 is not prohibited, but you may end up with worse memory consumption
-     *                   than {@code HashMap} can provide you.
-     *
-     * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
-     * @throws IllegalArgumentException If {@code fillFactor > 16} or {@code fillFactor <= 0.01}
-     */
-    public LongLongChainedMap( final long size, float fillFactor )
-    {
-        this( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultLongSerializer.INSTANCE, SingleThreadedBlockAllocator.DEFAULT_RECYCLE_BOUND );
-    }
-
-    /**
      * Create a map with a given size, fill factor and key/value serializers
      * @param size Expected map size
      * @param fillFactor Map fill factor. Fill factors over 1.0 are supported and preferred for this map. This implementation

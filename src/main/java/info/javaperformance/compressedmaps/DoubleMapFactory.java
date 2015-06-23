@@ -21,14 +21,8 @@ package info.javaperformance.compressedmaps;
 
 import info.javaperformance.compressedmaps.normal.doubles.*;
 import info.javaperformance.compressedmaps.concurrent.doubles.*;
-
-import info.javaperformance.serializers.IFloatSerializer;
-
-import info.javaperformance.serializers.ILongSerializer;
-
-import info.javaperformance.serializers.IDoubleSerializer;
-
-import info.javaperformance.serializers.IIntSerializer;
+import info.javaperformance.serializers.*;
+import info.javaperformance.malloc.SingleThreadedBlockAllocator;
 
 /**
  * The entry point for all map users. This class provides the factory methods which allow you to create
@@ -44,48 +38,52 @@ public class DoubleMapFactory
     //  Single threaded maps
     /////////////////////////////////////////////////////////////
 
-    public IDoubleIntMap singleThreadedDoubleIntMap( final long size, final float fillFactor )
+    public static IDoubleIntMap singleThreadedDoubleIntMap( final long size, final float fillFactor )
     {
-        return new DoubleIntChainedMap( size, fillFactor );
+        return new DoubleIntChainedMap( size, fillFactor,
+            DefaultDoubleSerializer.INSTANCE, DefaultIntSerializer.INSTANCE, SingleThreadedBlockAllocator.DEFAULT_RECYCLE_BOUND );
     }
 
-    public IDoubleIntMap singleThreadedDoubleIntMap( final long size, final float fillFactor,
+    public static IDoubleIntMap singleThreadedDoubleIntMap( final long size, final float fillFactor,
                                                    final IDoubleSerializer keySerializer, final IIntSerializer valueSerializer,
                                                    final long blockCacheLimit )
     {
         return new DoubleIntChainedMap( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
     }
 
-    public IDoubleLongMap singleThreadedDoubleLongMap( final long size, final float fillFactor )
+    public static IDoubleLongMap singleThreadedDoubleLongMap( final long size, final float fillFactor )
     {
-        return new DoubleLongChainedMap( size, fillFactor );
+        return new DoubleLongChainedMap( size, fillFactor,
+            DefaultDoubleSerializer.INSTANCE, DefaultLongSerializer.INSTANCE, SingleThreadedBlockAllocator.DEFAULT_RECYCLE_BOUND );
     }
 
-    public IDoubleLongMap singleThreadedDoubleLongMap( final long size, final float fillFactor,
+    public static IDoubleLongMap singleThreadedDoubleLongMap( final long size, final float fillFactor,
                                                    final IDoubleSerializer keySerializer, final ILongSerializer valueSerializer,
                                                    final long blockCacheLimit )
     {
         return new DoubleLongChainedMap( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
     }
 
-    public IDoubleFloatMap singleThreadedDoubleFloatMap( final long size, final float fillFactor )
+    public static IDoubleFloatMap singleThreadedDoubleFloatMap( final long size, final float fillFactor )
     {
-        return new DoubleFloatChainedMap( size, fillFactor );
+        return new DoubleFloatChainedMap( size, fillFactor,
+            DefaultDoubleSerializer.INSTANCE, DefaultFloatSerializer.INSTANCE, SingleThreadedBlockAllocator.DEFAULT_RECYCLE_BOUND );
     }
 
-    public IDoubleFloatMap singleThreadedDoubleFloatMap( final long size, final float fillFactor,
+    public static IDoubleFloatMap singleThreadedDoubleFloatMap( final long size, final float fillFactor,
                                                    final IDoubleSerializer keySerializer, final IFloatSerializer valueSerializer,
                                                    final long blockCacheLimit )
     {
         return new DoubleFloatChainedMap( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
     }
 
-    public IDoubleDoubleMap singleThreadedDoubleDoubleMap( final long size, final float fillFactor )
+    public static IDoubleDoubleMap singleThreadedDoubleDoubleMap( final long size, final float fillFactor )
     {
-        return new DoubleDoubleChainedMap( size, fillFactor );
+        return new DoubleDoubleChainedMap( size, fillFactor,
+            DefaultDoubleSerializer.INSTANCE, DefaultDoubleSerializer.INSTANCE, SingleThreadedBlockAllocator.DEFAULT_RECYCLE_BOUND );
     }
 
-    public IDoubleDoubleMap singleThreadedDoubleDoubleMap( final long size, final float fillFactor,
+    public static IDoubleDoubleMap singleThreadedDoubleDoubleMap( final long size, final float fillFactor,
                                                    final IDoubleSerializer keySerializer, final IDoubleSerializer valueSerializer,
                                                    final long blockCacheLimit )
     {
@@ -96,45 +94,45 @@ public class DoubleMapFactory
     //  Concurrent maps
     /////////////////////////////////////////////////////////////
 
-    public IDoubleIntConcurrentMap concurrentDoubleIntMap( final long size, final float fillFactor )
+    public static IDoubleIntConcurrentMap concurrentDoubleIntMap( final long size, final float fillFactor )
     {
-        return new DoubleIntConcurrentChainedMap( size, fillFactor );
+        return new DoubleIntConcurrentChainedMap( size, fillFactor, DefaultDoubleSerializer.INSTANCE, DefaultIntSerializer.INSTANCE );
     }
 
-    public IDoubleIntConcurrentMap concurrentDoubleIntMap( final long size, final float fillFactor,
+    public static IDoubleIntConcurrentMap concurrentDoubleIntMap( final long size, final float fillFactor,
                                                          final IDoubleSerializer keySerializer, final IIntSerializer valueSerializer )
     {
         return new DoubleIntConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
 
-    public IDoubleLongConcurrentMap concurrentDoubleLongMap( final long size, final float fillFactor )
+    public static IDoubleLongConcurrentMap concurrentDoubleLongMap( final long size, final float fillFactor )
     {
-        return new DoubleLongConcurrentChainedMap( size, fillFactor );
+        return new DoubleLongConcurrentChainedMap( size, fillFactor, DefaultDoubleSerializer.INSTANCE, DefaultLongSerializer.INSTANCE );
     }
 
-    public IDoubleLongConcurrentMap concurrentDoubleLongMap( final long size, final float fillFactor,
+    public static IDoubleLongConcurrentMap concurrentDoubleLongMap( final long size, final float fillFactor,
                                                          final IDoubleSerializer keySerializer, final ILongSerializer valueSerializer )
     {
         return new DoubleLongConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
 
-    public IDoubleFloatConcurrentMap concurrentDoubleFloatMap( final long size, final float fillFactor )
+    public static IDoubleFloatConcurrentMap concurrentDoubleFloatMap( final long size, final float fillFactor )
     {
-        return new DoubleFloatConcurrentChainedMap( size, fillFactor );
+        return new DoubleFloatConcurrentChainedMap( size, fillFactor, DefaultDoubleSerializer.INSTANCE, DefaultFloatSerializer.INSTANCE );
     }
 
-    public IDoubleFloatConcurrentMap concurrentDoubleFloatMap( final long size, final float fillFactor,
+    public static IDoubleFloatConcurrentMap concurrentDoubleFloatMap( final long size, final float fillFactor,
                                                          final IDoubleSerializer keySerializer, final IFloatSerializer valueSerializer )
     {
         return new DoubleFloatConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
 
-    public IDoubleDoubleConcurrentMap concurrentDoubleDoubleMap( final long size, final float fillFactor )
+    public static IDoubleDoubleConcurrentMap concurrentDoubleDoubleMap( final long size, final float fillFactor )
     {
-        return new DoubleDoubleConcurrentChainedMap( size, fillFactor );
+        return new DoubleDoubleConcurrentChainedMap( size, fillFactor, DefaultDoubleSerializer.INSTANCE, DefaultDoubleSerializer.INSTANCE );
     }
 
-    public IDoubleDoubleConcurrentMap concurrentDoubleDoubleMap( final long size, final float fillFactor,
+    public static IDoubleDoubleConcurrentMap concurrentDoubleDoubleMap( final long size, final float fillFactor,
                                                          final IDoubleSerializer keySerializer, final IDoubleSerializer valueSerializer )
     {
         return new DoubleDoubleConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );

@@ -19,6 +19,7 @@
 
 package info.javaperformance.compressedmaps.concurrent.floats;
 
+import info.javaperformance.compressedmaps.FloatMapFactory;
 import junit.framework.TestCase;
 
 import java.util.concurrent.CountDownLatch;
@@ -26,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 public class FloatFloatConcurrentChainedMapTest extends TestCase
 {
-    private static final int PUT_MAP_SIZE = 1 * 1000 * 1000;
+    private static final int PUT_MAP_SIZE = 1000 * 1000;
     private static final int INITIAL_CAPACITY = 1;
     private static final float ZERO = 0;
     private static final float ONE = 1;
@@ -38,7 +39,7 @@ public class FloatFloatConcurrentChainedMapTest extends TestCase
 
     protected IFloatFloatConcurrentMap getMap( final int size, final float ff )
     {
-        return new FloatFloatConcurrentChainedMap( size, ff );
+        return FloatMapFactory.concurrentFloatFloatMap( size, ff );
     }
 
     /*
