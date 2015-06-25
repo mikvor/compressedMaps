@@ -703,7 +703,15 @@ public class DoubleLongChainedMap implements IDoubleLongMap
             final long newThreshold = newCapacity >= Primes.getMaxIntPrime() ? Long.MAX_VALUE : m_threshold * multiplier;
 
             final Buckets old = m_data;
-            m_data = new Buckets( newCapacity, old.isLong() );
+            try {
+                m_data = new Buckets( newCapacity, old.isLong() );
+            }
+            catch ( OutOfMemoryError ex )
+            {
+                //let's disable rehashing and keep on working
+                m_threshold = Long.MAX_VALUE;
+                return;
+            }
             m_threshold = newThreshold;
             rehash( old );
         }
