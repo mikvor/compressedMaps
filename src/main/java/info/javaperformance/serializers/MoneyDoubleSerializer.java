@@ -42,9 +42,6 @@ import info.javaperformance.tools.VarLen;
  * In order to deal with the possible rounding errors while calculating the delta, we use delta encoding only
  * for 2 {@code double} values successfully converted into {@code long}. We store the current number itself in all
  * other cases thus avoiding any rounding errors in this serializer.
- *
- * todo test when conversion fails for points=2
- * todo check compression effectiveness
  */
 public class MoneyDoubleSerializer implements IDoubleSerializer {
     /** Maximal supported number of digits after decimal point.
@@ -89,7 +86,7 @@ public class MoneyDoubleSerializer implements IDoubleSerializer {
     @Override
     public void write( final double v, final ByteArray buf )
     {
-        m_prev = fromDoubleNoFallback( v, m_multiplier );
+        m_prev = fromDouble0( v, m_multiplier );
         if ( m_prev != NOT_PARSED )
         {
             buf.put( LONG );
@@ -125,7 +122,7 @@ public class MoneyDoubleSerializer implements IDoubleSerializer {
         }
         else
         {
-            final long lCur = fromDoubleNoFallback( curValue, m_multiplier );
+            final long lCur = fromDouble0( curValue, m_multiplier );
             if ( lCur == NOT_PARSED )
             {
                 m_prev = NOT_PARSED; //can't write delta on next step
@@ -185,23 +182,6 @@ public class MoneyDoubleSerializer implements IDoubleSerializer {
         return 11; //max(long) + 1 byte for flags
     }
 
-    private static long fromDoubleNoFallback( final double value, final long multiplier )
-    {
-        //attempt direct
-        final long direct = fromDouble0( value, multiplier );
-        if ( direct != NOT_PARSED )
-            return direct;
-        //ulp down
-        final long down = fromDouble0( Math.nextAfter( value, -Double.MAX_VALUE ), multiplier );
-        if ( down != NOT_PARSED )
-            return down;
-        //ulp up
-        final long up = fromDouble0( Math.nextAfter( value, Double.MAX_VALUE ), multiplier );
-        if ( up != NOT_PARSED )
-            return up;
-        return NOT_PARSED;
-    }
-
     private static long fromDouble0( final double value, final long multiplier )
     {
         //this operation does not guarantee the exact result. We can gain a little more by testing multiplied+-ULP here too.
@@ -209,6 +189,19 @@ public class MoneyDoubleSerializer implements IDoubleSerializer {
         final long converted = ( long ) multiplied;
         if ( multiplied == converted ) //here is an implicit conversion from long to double
             return converted;
+
+        //ulp up
+        final double multipliedUp = Math.nextAfter( multiplied, Double.MAX_VALUE );
+        final long convertedUp = ( long ) multipliedUp;
+        if ( multipliedUp == convertedUp ) //here is an implicit conversion from long to double
+            return convertedUp;
+
+        //ulp down
+        final double multipliedDown = Math.nextAfter( multiplied, -Double.MAX_VALUE );
+        final long convertedDown = ( long ) multipliedDown;
+        if ( multipliedDown == convertedDown ) //here is an implicit conversion from long to double
+            return convertedDown;
+
         return NOT_PARSED;
     }
 }

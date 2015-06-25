@@ -39,7 +39,7 @@ public class MoneyDoubleSerializerTest extends TestCase {
                     final double v2 = bd.multiply( new BigDecimal( 3 ) ).doubleValue();
                     serializer.writeDelta( v1, v2, bar, i > 0 );
 
-                    final double v3 = bd.multiply( new BigDecimal( 7 ) ).doubleValue();
+                    final double v3 = bd.multiply( new BigDecimal( 12 ) ).doubleValue();
                     serializer.writeDelta( v2, v3, bar, i > 0 );
 
                     bar.position( 0 );
