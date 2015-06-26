@@ -50,6 +50,12 @@ public interface IFloatSerializer {
     public float readDelta( final float prevValue, final ByteArray buf, final boolean sorted );
 
     /**
+     * Skip the current value in the buffer. This method should work faster than actual reading.
+     * @param buf Input buffer
+     */
+    public void skip( final ByteArray buf );
+
+    /**
      * Get the maximal length of a value binary representation in this encoding. You must not return too low results
      * from this method. Slightly bigger results are tolerable.
      * @return The maximal length of a value binary representation in this encoding

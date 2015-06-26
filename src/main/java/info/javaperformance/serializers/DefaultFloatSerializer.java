@@ -51,6 +51,12 @@ public final class DefaultFloatSerializer implements IFloatSerializer
     }
 
     @Override
+    public void skip( final ByteArray buf ) {
+        buf.position( buf.position() + 4 );
+    }
+
+
+    @Override
     public int getMaxLength() {
         return 4;
     }

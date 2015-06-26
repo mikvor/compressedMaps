@@ -51,6 +51,12 @@ public final class DefaultDoubleSerializer implements IDoubleSerializer
     }
 
     @Override
+    public void skip( final ByteArray buf ) {
+        buf.position( buf.position() + 8 );
+    }
+
+
+    @Override
     public int getMaxLength() {
         return 8;
     }

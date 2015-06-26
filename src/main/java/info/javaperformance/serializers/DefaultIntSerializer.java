@@ -54,6 +54,12 @@ public final class DefaultIntSerializer implements IIntSerializer
     }
 
     @Override
+    public void skip( final ByteArray buf ) {
+        VarLen.skipVarLen( buf );
+    }
+
+
+    @Override
     public int getMaxLength() {
         return 5;
     }
