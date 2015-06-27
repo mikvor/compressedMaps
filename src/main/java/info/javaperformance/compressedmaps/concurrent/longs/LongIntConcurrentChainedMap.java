@@ -303,7 +303,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
     private long singleEntry( final Block output, final long key, final int value )
     {
         final int startPos = output.pos;
-        final ByteArray bar = getByteArray(output);
+        final ByteArray bar = getByteArray( output );
         output.increaseEntries(); //allocate block prior to writing
         getWriter().reset( bar ).writePair( key, value );
         output.pos = bar.position();
@@ -330,12 +330,18 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
             return null; //it means we are already late
         final int inputStartOffset = getOffset( bucket );
 
-        final ByteArray input = getByteArray(inputBlock, inputStartOffset);
+        final ByteArray input = getByteArray( inputBlock, inputStartOffset );
         final Iterator iter = getIterator().reset( input, getBlockLength( bucket ) );
         if ( iter.getElems() > MAX_ENCODED_LENGTH - 2 ) //could grow to 255+, which should be stored in the bucket
             return addToChainSlow( bucket, iter, inputBlock, inputStartOffset, key, value );
 
-        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( getMaxSpace( iter.getElems() + 1 ) );
+        while ( iter.hasNext() )
+            iter.skip();
+        final int chainLength = input.position() - inputStartOffset;
+        input.position( inputStartOffset );
+        iter.reset( input, getBlockLength( bucket ) );
+
+        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength + m_singleEntryLength );
         final int startOutputPos = outputBlock.pos;
         final ByteArray baOutput = getByteArray2( outputBlock ) ;
 
@@ -411,7 +417,7 @@ public class LongIntConcurrentChainedMap implements ILongIntConcurrentMap
 
         outputBlock.increaseEntries();//allocate block
         //here we write the correct number of elements upfront
-        final Writer writer = getWriter().reset(output, elems);
+        final Writer writer = getWriter().reset( output, elems );
         boolean inserted = false;
 
         //fully reset the iterator (position on the bucket length)
