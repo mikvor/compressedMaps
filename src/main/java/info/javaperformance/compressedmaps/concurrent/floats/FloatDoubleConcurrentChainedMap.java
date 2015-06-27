@@ -151,7 +151,7 @@ public class FloatDoubleConcurrentChainedMap implements IFloatDoubleConcurrentMa
                 threshold *= 2;
         }
         m_data = new AtomicReference<>( new Buffers( m_longAlloc.allocate( newCapacity ), null, threshold, 0, 2 ) );
-        m_singleEntryLength = getMaxSpace( 1 ); //optimization
+        m_singleEntryLength = m_keySerializer.getMaxLength() + m_valueSerializer.getMaxLength() + 1; //optimization
     }
 
     /**
@@ -526,10 +526,10 @@ public class FloatDoubleConcurrentChainedMap implements IFloatDoubleConcurrentMa
      */
     private UpdateResult removeKey( final long bucket, final float key )
     {
-        final Block inputBlock = getBlockByIndex(bucket);
+        final Block inputBlock = getBlockByIndex( bucket );
         if ( inputBlock == null )
             return null;// too late, need to rerun
-        final int inputStartOffset = getOffset(bucket);
+        final int inputStartOffset = getOffset( bucket );
 
         final ByteArray input = getByteArray( inputBlock, inputStartOffset );
         final Iterator iter = getIterator().reset( input, getBlockLength( bucket ) );
@@ -543,10 +543,7 @@ public class FloatDoubleConcurrentChainedMap implements IFloatDoubleConcurrentMa
             {
                 hasKey = true;
                 retValue = iter.getValue();
-                break;
             }
-            else if ( iter.getKey() > key )
-                break;
         }
         if ( !hasKey )
             return getUpdateResult().set( bucket, NO_VALUE, 0, null, null, 0 );
@@ -555,10 +552,11 @@ public class FloatDoubleConcurrentChainedMap implements IFloatDoubleConcurrentMa
         if ( iter.getElems() == 1 )
             return getUpdateResult().set( EMPTY, retValue, -1, inputBlock, null, 0 );
 
-        input.position(inputStartOffset);
-        iter.reset(input, getBlockLength(bucket));
+        final int chainLength = input.position() - inputStartOffset;
+        input.position( inputStartOffset );
+        iter.reset( input, getBlockLength( bucket ) );
 
-        final Block outputBlock = m_blockAllocator.getThreadLocalBlock(getMaxSpace(iter.getElems() - 1));
+        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( Math.min( chainLength, ( iter.getElems() - 1 ) * m_singleEntryLength ) );
         final int startOutputPos = outputBlock.pos;
         final ByteArray output = getByteArray2( outputBlock );
         outputBlock.increaseEntries(); //allocate ticket
@@ -914,11 +912,6 @@ public class FloatDoubleConcurrentChainedMap implements IFloatDoubleConcurrentMa
     private ByteArray getByteArray( final Block ar, final int offset )
     {
         return getByteArray( s_bar1, ar, offset );
-    }
-
-    private int getMaxSpace( final int entries )
-    {
-        return ( m_keySerializer.getMaxLength() + m_valueSerializer.getMaxLength() ) * entries + ( entries < 128 ? 1 : 5 ); //5 - theoretical maximal chain length
     }
 
     /**
