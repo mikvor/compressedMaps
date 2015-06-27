@@ -325,10 +325,10 @@ public class IntIntConcurrentChainedMap implements IIntIntConcurrentMap
             return getUpdateResult().set( singleEntry( output, key, value ), NO_VALUE, 1, null, output, outputStart );
         }
 
-        final Block inputBlock = getBlockByIndex(bucket);
+        final Block inputBlock = getBlockByIndex( bucket );
         if ( inputBlock == null )
             return null; //it means we are already late
-        final int inputStartOffset = getOffset(bucket);
+        final int inputStartOffset = getOffset( bucket );
 
         final ByteArray input = getByteArray(inputBlock, inputStartOffset);
         final Iterator iter = getIterator().reset( input, getBlockLength( bucket ) );
@@ -337,7 +337,7 @@ public class IntIntConcurrentChainedMap implements IIntIntConcurrentMap
 
         final Block outputBlock = m_blockAllocator.getThreadLocalBlock( getMaxSpace( iter.getElems() + 1 ) );
         final int startOutputPos = outputBlock.pos;
-        final ByteArray baOutput = getByteArray2(outputBlock);
+        final ByteArray baOutput = getByteArray2( outputBlock ) ;
 
         outputBlock.increaseEntries(); //allocate block
         final Writer writer = getWriter().reset( baOutput );

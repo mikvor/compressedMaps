@@ -200,7 +200,14 @@ public class FloatDoubleChainedMap implements IFloatDoubleMap
         if ( iter.getElems() > m_data.maxEncodedLength() - 2 ) //could grow to 255+, which should be stored in the bucket
             return addToChainSlow( index, iter, inputBlock, inputStartOffset, key, value );
 
-        final SingleThreadedBlock outputBlock = getBlock( getMaxSpace( iter.getElems() + 1 ) );
+        //calculate the chain length (it helps us to better fill data blocks)
+        while ( iter.hasNext() )
+            iter.skip();
+        final int chainLength = input.position() - inputStartOffset;
+        input.position( inputStartOffset );
+        iter.reset( input, m_data );
+
+        final SingleThreadedBlock outputBlock = getBlock( chainLength + m_singleEntryLength );
         final int startOutputPos = outputBlock.pos;
         final ByteArray baOutput = getByteArray2( outputBlock );
 
