@@ -341,7 +341,7 @@ public class IntDoubleConcurrentChainedMap implements IIntDoubleConcurrentMap
         input.position( inputStartOffset );
         iter.reset( input, getBlockLength( bucket ) );
 
-        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength + m_singleEntryLength );
+        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength + 2 * m_singleEntryLength );
         final int startOutputPos = outputBlock.pos;
         final ByteArray baOutput = getByteArray2( outputBlock ) ;
 
@@ -408,7 +408,7 @@ public class IntDoubleConcurrentChainedMap implements IIntDoubleConcurrentMap
         }
         final int chainLength = iter.getBuf().position() - inputStartOffset;
         final int elems = hasKey ? iter.getElems() : iter.getElems() + 1;
-        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength + m_singleEntryLength );
+        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength + 2 * m_singleEntryLength + 2 ); //2 for transition from header to chain length
         final int startOutputPos = outputBlock.pos;
         final ByteArray output = getByteArray2( outputBlock );
 

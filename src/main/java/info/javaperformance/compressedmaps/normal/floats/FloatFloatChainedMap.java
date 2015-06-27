@@ -207,7 +207,8 @@ public class FloatFloatChainedMap implements IFloatFloatMap
         input.position( inputStartOffset );
         iter.reset( input, m_data );
 
-        final SingleThreadedBlock outputBlock = getBlock( chainLength + m_singleEntryLength );
+        //todo 2* is a safety net here due to possiblity that a value may take longer in the delta form compared to original form
+        final SingleThreadedBlock outputBlock = getBlock( chainLength + 2 * m_singleEntryLength );
         final int startOutputPos = outputBlock.pos;
         final ByteArray baOutput = getByteArray2( outputBlock );
 
@@ -276,7 +277,7 @@ public class FloatFloatChainedMap implements IFloatFloatMap
         }
         final int chainLength = iter.getBuf().position() - inputStartOffset;
         final int elems = hasKey ? iter.getElems() : iter.getElems() + 1;
-        final SingleThreadedBlock outputBlock = getBlock( m_singleEntryLength + chainLength );
+        final SingleThreadedBlock outputBlock = getBlock( 2 * m_singleEntryLength + chainLength + 2 ); //2 for transition from header to chain length
         final int startOutputPos = outputBlock.pos;
         final ByteArray output = getByteArray2( outputBlock );
 
