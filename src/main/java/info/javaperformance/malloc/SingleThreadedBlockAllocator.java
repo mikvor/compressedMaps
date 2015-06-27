@@ -87,8 +87,8 @@ public class SingleThreadedBlockAllocator {
             while ( m_currentlyRecycled > 0 ) {
                 final SingleThreadedBlock block = m_recycle.removeFirst();
                 m_currentlyRecycled -= block.data.length;
-                //we should not allocate blocks bigger than requested. Smaller blocks are OK.
-                if ( block.data.length <= blockSize ) {
+                //we should not allocate blocks smaller than requested.
+                if ( block.data.length >= blockSize ) {
                     b = block.reset( id );
                     break;
                 }
@@ -104,16 +104,17 @@ public class SingleThreadedBlockAllocator {
      * Get current or allocate a new thread local block
      * @param forceNew True to force a new block allocation
      * @param data Buckets object, used to calculate the block size
+     * @param requiredSize Minimal required block size
      * @return A block managed by a current thread
      */
-    private SingleThreadedBlock getCurrentBlock( final boolean forceNew, final Buckets data )
+    private SingleThreadedBlock getCurrentBlock( final boolean forceNew, final Buckets data, final int requiredSize )
     {
         if ( forceNew )
-            return ( m_currentBlock = allocateNewBlock( data.getBlockSize( m_blocks.size() ) ) );
+            return ( m_currentBlock = allocateNewBlock( Math.max( requiredSize, data.getBlockSize( m_blocks.size() ) ) ) );
         else
         {
             if ( m_currentBlock == null )
-                m_currentBlock = allocateNewBlock( data.getBlockSize( m_blocks.size() ) );
+                m_currentBlock = allocateNewBlock( Math.max( requiredSize, data.getBlockSize( m_blocks.size() ) ) );
             return m_currentBlock;
         }
     }
@@ -126,10 +127,10 @@ public class SingleThreadedBlockAllocator {
      */
     public SingleThreadedBlock getBlock( final int requiredSize, final Buckets data )
     {
-        SingleThreadedBlock cur = getCurrentBlock( false, data );
+        SingleThreadedBlock cur = getCurrentBlock( false, data, requiredSize );
         if ( !cur.hasSpace( requiredSize ) ) {
             cur.writeFinished();
-            cur = getCurrentBlock( true, data );
+            cur = getCurrentBlock( true, data, requiredSize );
         }
         return cur;
     }

@@ -32,7 +32,7 @@ public class IntBucketEncoding {
     private static final int BLOCK_SIZE_BITS = 12;
     private static final int LENGTH_BITS = 3;
     private static final int BLOCK_ID_OFFSET = BLOCK_SIZE_BITS + LENGTH_BITS;
-    private static final int MAX_BLOCK_SIZE = 1 << BLOCK_SIZE_BITS;
+    public static final int MAX_BLOCK_SIZE = 1 << BLOCK_SIZE_BITS;
     /** Maximal length of a bucket you can have encoded in {@code int} */
     public static final int MAX_ENCODED_LENGTH = ( 1 << LENGTH_BITS ) - 1;
     /** Maximal supported block index */

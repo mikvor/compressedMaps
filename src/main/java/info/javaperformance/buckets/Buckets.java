@@ -208,7 +208,7 @@ public class Buckets
 
         @Override
         public void set( final int index, final int blockIdx, final int offset, final int length ) {
-            if ( blockIdx > IntBucketEncoding.MAX_BLOCK_INDEX )
+            if ( blockIdx > IntBucketEncoding.MAX_BLOCK_INDEX || offset >= IntBucketEncoding.MAX_BLOCK_SIZE )
             {
                 /*
                  Migrate to a long map. We need the same size map, but all values must be repacked.
