@@ -767,6 +767,16 @@ public class DoubleIntConcurrentChainedMap implements IDoubleIntConcurrentMap
         }
 
         /**
+        * Skip the current entry
+        */
+        public void skip()
+        {
+            m_keySerializer.skip( buf );
+            m_valueSerializer.skip( buf );
+            ++cur;
+        }
+
+        /**
          * @return A key read by the last {@code advance} call
          */
         public double getKey() {

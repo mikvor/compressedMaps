@@ -178,6 +178,15 @@ public class MoneyDoubleSerializer implements IDoubleSerializer {
     }
 
     @Override
+    public void skip( final ByteArray buf )
+    {
+        if ( buf.get() == LONG )
+            VarLen.skipVarLen( buf );
+        else
+            buf.position( buf.position() + 8 );
+    }
+
+    @Override
     public int getMaxLength() {
         return 11; //max(long) + 1 byte for flags
     }

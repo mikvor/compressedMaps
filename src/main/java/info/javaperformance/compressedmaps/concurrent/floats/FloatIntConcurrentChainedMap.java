@@ -767,6 +767,16 @@ public class FloatIntConcurrentChainedMap implements IFloatIntConcurrentMap
         }
 
         /**
+        * Skip the current entry
+        */
+        public void skip()
+        {
+            m_keySerializer.skip( buf );
+            m_valueSerializer.skip( buf );
+            ++cur;
+        }
+
+        /**
          * @return A key read by the last {@code advance} call
          */
         public float getKey() {
