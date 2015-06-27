@@ -128,7 +128,7 @@ public class IntLongChainedMap implements IIntLongMap
             m_threshold = threshold;
         }
         //optimizations
-        m_singleEntryLength = getMaxSpace( 1 );
+        m_singleEntryLength = m_keySerializer.getMaxLength() + m_valueSerializer.getMaxLength() + 1;
         m_iter = new Iterator( m_keySerializer, m_valueSerializer );
         m_writer = new Writer( m_keySerializer, m_valueSerializer );
     }
@@ -658,11 +658,6 @@ public class IntLongChainedMap implements IIntLongMap
     private ByteArray getByteArray( final SingleThreadedBlock ar, final int offset )
     {
         return m_bar1.reset( ar.data, offset );
-    }
-
-    private int getMaxSpace( final int entries )
-    {
-        return ( m_keySerializer.getMaxLength() + m_valueSerializer.getMaxLength() ) * entries + ( entries < 128 ? 1 : 5 ); //5 - theoretical maximal chain length
     }
 
     private SingleThreadedBlock getBlock( final int bytes )
