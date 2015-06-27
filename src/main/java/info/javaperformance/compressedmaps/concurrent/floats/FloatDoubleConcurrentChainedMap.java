@@ -404,16 +404,13 @@ public class FloatDoubleConcurrentChainedMap implements IFloatDoubleConcurrentMa
             {
                 hasKey = true;
                 retValue = iter.getValue();
-                break;
             }
-            else if ( iter.getKey() > key )
-                break;
         }
-
+        final int chainLength = iter.getBuf().position() - inputStartOffset;
         final int elems = hasKey ? iter.getElems() : iter.getElems() + 1;
-        final Block outputBlock = m_blockAllocator.getThreadLocalBlock(getMaxSpace(elems));
+        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength + m_singleEntryLength );
         final int startOutputPos = outputBlock.pos;
-        final ByteArray output = getByteArray2(outputBlock);
+        final ByteArray output = getByteArray2( outputBlock );
 
         outputBlock.increaseEntries();//allocate block
         //here we write the correct number of elements upfront
