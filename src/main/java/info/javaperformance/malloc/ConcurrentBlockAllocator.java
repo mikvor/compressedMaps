@@ -64,20 +64,21 @@ public class ConcurrentBlockAllocator {
     /**
      * Get current or allocate a new thread local block
      * @param forceNew True to force a new block allocation
+     * @param requestedSize Minimal block size requested by a client
      * @return A block managed by a current thread
      */
-    private Block getCurrentThreadBlock( final boolean forceNew )
+    private Block getCurrentThreadBlock( final boolean forceNew, final int requestedSize )
     {
         if ( forceNew )
         {
-            final Block res = allocateNewBlock( LongBucketEncoding.getBlockSize( m_blocks.size() ) );
+            final Block res = allocateNewBlock( Math.max( requestedSize, LongBucketEncoding.getBlockSize( m_blocks.size() ) ) );
             m_currentBlock.set( res );
             return res;
         }
         else {
             Block res = m_currentBlock.get();
             if ( res == null )
-                m_currentBlock.set(res = allocateNewBlock( LongBucketEncoding.getBlockSize( m_blocks.size() ) ));
+                m_currentBlock.set( res = allocateNewBlock( Math.max( requestedSize, LongBucketEncoding.getBlockSize( m_blocks.size() ) ) ) );
             return res;
         }
     }
@@ -89,10 +90,10 @@ public class ConcurrentBlockAllocator {
      */
     public Block getThreadLocalBlock( final int requiredSize )
     {
-        Block cur = getCurrentThreadBlock(false);
+        Block cur = getCurrentThreadBlock( false, requiredSize );
         if ( !cur.hasSpace( requiredSize ) ) {
             cur.writeFinished();
-            cur = getCurrentThreadBlock(true);
+            cur = getCurrentThreadBlock( true, requiredSize );
         }
         return cur;
     }
