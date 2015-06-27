@@ -272,16 +272,13 @@ public class FloatIntChainedMap implements IFloatIntMap
             {
                 hasKey = true;
                 retValue = iter.getValue();
-                break;
             }
-            else if ( iter.getKey() > key )
-                break;
         }
-
+        final int chainLength = iter.getBuf().position() - inputStartOffset;
         final int elems = hasKey ? iter.getElems() : iter.getElems() + 1;
-        final SingleThreadedBlock outputBlock = getBlock( getMaxSpace( elems ) );
+        final SingleThreadedBlock outputBlock = getBlock( m_singleEntryLength + chainLength );
         final int startOutputPos = outputBlock.pos;
-        final ByteArray output = getByteArray2(outputBlock);
+        final ByteArray output = getByteArray2( outputBlock );
 
         inputBlock.decreaseEntries();
         outputBlock.increaseEntries();//allocate block
@@ -315,7 +312,7 @@ public class FloatIntChainedMap implements IFloatIntMap
             }
         }
         if ( !inserted ) //all keys are smaller
-            writer.writePair(key, value);
+            writer.writePair( key, value );
 
         outputBlock.pos = output.position();
         m_data.set( index, outputBlock.getIndex(), startOutputPos, m_data.maxEncodedLength() );
