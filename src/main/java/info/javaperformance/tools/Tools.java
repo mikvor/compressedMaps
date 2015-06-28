@@ -59,28 +59,35 @@ public class Tools {
      */
     public static int getIndex( final long key, final int capacity )
     {
-        final long v = Tools.murmur3(key);
-        int i = (int) (v ^ ( v >>> 32 ));
-        return (i & NO_SIGN_MASK ) % capacity;
+        final long v = Tools.murmur3( key );
+        int i = ( int ) ( v ^ ( v >>> 32 ) );
+        return ( i & NO_SIGN_MASK ) % capacity;
     }
 
     public static int getIndex( final int key, final int capacity )
     {
-        final int v = Tools.murmur3(key);
-        int i = (v ^ ( v >>> 16 ));
+        final int v = Tools.murmur3( key );
+        int i = ( v ^ ( v >>> 16 ) );
+        return ( i & NO_SIGN_MASK ) % capacity;
+    }
+
+    public static int getIndexFast( final Object key, final int capacity )
+    {
+        final int hash = key != null ? key.hashCode() : 0;
+        final int i = hash ^ ( hash >>> 16 );
         return (i & NO_SIGN_MASK ) % capacity;
     }
 
     public static int getIndexFast( final int key, final int capacity )
     {
         final int i = key ^ ( key >>> 16 );
-        return (i & NO_SIGN_MASK ) % capacity;
+        return ( i & NO_SIGN_MASK ) % capacity;
     }
 
     public static int getIndexFast( final long key, final int capacity )
     {
         final int i = (int) (key ^ ( key >>> 32 ));
-        return (i & NO_SIGN_MASK ) % capacity;
+        return ( i & NO_SIGN_MASK ) % capacity;
     }
 
     public static int getIndexFast( final float key, final int capacity )
