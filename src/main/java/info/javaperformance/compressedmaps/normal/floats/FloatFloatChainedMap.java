@@ -207,7 +207,7 @@ public class FloatFloatChainedMap implements IFloatFloatMap
         input.position( inputStartOffset );
         iter.reset( input, m_data );
 
-        //todo 2* is a safety net here due to possiblity that a value may take longer in the delta form compared to original form
+        //2* is a safety net here due to possibility that a value may take longer in the delta form compared to original form
         final SingleThreadedBlock outputBlock = getBlock( chainLength + 2 * m_singleEntryLength );
         final int startOutputPos = outputBlock.pos;
         final ByteArray baOutput = getByteArray2( outputBlock );

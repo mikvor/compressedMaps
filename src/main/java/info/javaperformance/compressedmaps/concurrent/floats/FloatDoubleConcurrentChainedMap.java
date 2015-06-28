@@ -341,6 +341,7 @@ public class FloatDoubleConcurrentChainedMap implements IFloatDoubleConcurrentMa
         input.position( inputStartOffset );
         iter.reset( input, getBlockLength( bucket ) );
 
+        //2* is a safety net here due to possibility that a value may take longer in the delta form compared to original form
         final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength + 2 * m_singleEntryLength );
         final int startOutputPos = outputBlock.pos;
         final ByteArray baOutput = getByteArray2( outputBlock ) ;
