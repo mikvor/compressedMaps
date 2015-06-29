@@ -17,7 +17,7 @@
  *      Mikhail Vorontsov
  */
 
-package info.javaperformance.compressedmaps.normal.ints;
+package info.javaperformance.compressedmaps.normal.doubles;
 
 import info.javaperformance.buckets.Buckets;
 import info.javaperformance.malloc.SingleThreadedBlock;
@@ -35,22 +35,22 @@ import static info.javaperformance.tools.VarLen.writeUnsignedInt;
  * A simple single threaded compressed map. It uses {@code int[]} instead of {@code long[]} for buckets
  * before it allocates 128K blocks (or chain length exceeds 4K), so that the smaller maps can benefit from the even smaller map footprint.
  */
-public class IntIntChainedMap implements IIntIntMap{
-    private static final int NO_VALUE = 0 ;
+public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
+    private  final V NO_VALUE = null ;
 
     /*
     We store multiple reusable objects here. They are needed to avoid unnecessary object allocations.
      */
-    private final Iterator m_iter;
+    private final Iterator<V> m_iter;
     private final ByteArray m_bar1 = new ByteArray();
     private final ByteArray m_bar2 = new ByteArray();
-    private final UpdateResult m_updateResult = new UpdateResult();
-    private final Writer m_writer;
+    private final UpdateResult<V> m_updateResult = new UpdateResult<>();
+    private final Writer<V> m_writer;
 
     /** Key serializer */
-    private final IIntSerializer m_keySerializer;
+    private final IDoubleSerializer m_keySerializer;
     /** Value serializer */
-    private final IIntSerializer m_valueSerializer;
+    private final IObjectSerializer<V> m_valueSerializer;
     /** Original fill factor */
     private final float m_fillFactor;
     /**
@@ -74,8 +74,6 @@ public class IntIntChainedMap implements IIntIntMap{
     /** Memory blocks are allocated and tracked here */
     private final SingleThreadedBlockAllocator m_blockAllocator;
 
-    /** Length of a single entry */
-    private final int m_singleEntryLength;
 
     /**
      * Create a map with a given size, fill factor and key/value serializers
@@ -94,8 +92,8 @@ public class IntIntChainedMap implements IIntIntMap{
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
      * @throws IllegalArgumentException If {@code fillFactor > 16} or {@code fillFactor <= 0.01} or {@code blockCacheLimit < 0}
      */
-    public IntIntChainedMap( final long size, final float fillFactor,
-                               final IIntSerializer keySerializer, final IIntSerializer valueSerializer,
+    public DoubleObjectChainedMap( final long size, final float fillFactor,
+                               final IDoubleSerializer keySerializer, final IObjectSerializer<V> valueSerializer,
                                final long blockCacheLimit )
     {
         Objects.requireNonNull( keySerializer, "Key serializer must be provided!" );
@@ -127,18 +125,17 @@ public class IntIntChainedMap implements IIntIntMap{
             m_threshold = threshold;
         }
         //optimizations
-        m_singleEntryLength = m_keySerializer.getMaxLength() + m_valueSerializer.getMaxLength() + 1;
-        m_iter = new Iterator( m_keySerializer, m_valueSerializer );
-        m_writer = new Writer( m_keySerializer, m_valueSerializer );
+        m_iter = new Iterator<>( m_keySerializer, m_valueSerializer );
+        m_writer = new Writer<>( m_keySerializer, m_valueSerializer );
     }
 
-    public int get( final int key )
+    public V get( final double key )
     {
         if ( !m_data.select( getIndex( key, m_data.length() ) ) )
             return NO_VALUE;
 
         final SingleThreadedBlock input = getBlockByIndex( m_data.getBlockIndex() );
-        final Iterator iter = m_iter.reset( getByteArray( input, m_data.getOffset() ), m_data );
+        final Iterator<V> iter = m_iter.reset( getByteArray( input, m_data.getOffset() ), m_data );
         while ( iter.hasNext() ) {
             iter.advance();
             if ( iter.getKey() == key )
@@ -149,12 +146,12 @@ public class IntIntChainedMap implements IIntIntMap{
         return NO_VALUE;
     }
 
-    public int put( final int key, final int value )
+    public V put( final double key, final V value )
     {
         final int idx = getIndex( key, m_data.length() );
         //copy/update the chain
-        final UpdateResult res = addToChain( idx, key, value );
-        final int ret = res.retValue; //must be saved in case of rehash
+        final UpdateResult<V> res = addToChain( idx, key, value );
+        final V ret = res.retValue; //must be saved in case of rehash
         changeSize( res.sizeChange );
         return ret;
     }
@@ -166,7 +163,7 @@ public class IntIntChainedMap implements IIntIntMap{
      * @param value Value
      * @param idx Bucket to use
      */
-    private void singleEntry( final SingleThreadedBlock output, final int key, final int value, final int idx )
+    private void singleEntry( final SingleThreadedBlock output, final double key, final V value, final int idx )
     {
         final int startPos = output.pos;
         final ByteArray bar = getByteArray( output );
@@ -184,10 +181,10 @@ public class IntIntChainedMap implements IIntIntMap{
      * @param value Value
      * @return A new chain and an old value
      */
-    private UpdateResult addToChain( final int index, final int key, final int value )
+    private UpdateResult<V> addToChain( final int index, final double key, final V value )
     {
         if ( !m_data.select( index ) ) {
-            singleEntry( getBlock( m_singleEntryLength ), key, value, index );
+            singleEntry( getBlock( m_keySerializer.getMaxLength() + m_valueSerializer.getMaxLength( value ) + 1 ), key, value, index );
             return m_updateResult.set( NO_VALUE, 1 );
         }
 
@@ -195,7 +192,7 @@ public class IntIntChainedMap implements IIntIntMap{
         final int inputStartOffset = m_data.getOffset();
 
         final ByteArray input = getByteArray( inputBlock, inputStartOffset );
-        final Iterator iter = m_iter.reset( input, m_data );
+        final Iterator<V> iter = m_iter.reset( input, m_data );
         if ( iter.getElems() > m_data.maxEncodedLength() - 2 ) //could grow to 255+, which should be stored in the bucket
             return addToChainSlow( index, iter, inputBlock, inputStartOffset, key, value );
 
@@ -207,15 +204,15 @@ public class IntIntChainedMap implements IIntIntMap{
         iter.reset( input, m_data );
 
         //2* is a safety net here due to possibility that a value may take longer in the delta form compared to original form
-        final SingleThreadedBlock outputBlock = getBlock( chainLength + 2 * m_singleEntryLength );
+        final SingleThreadedBlock outputBlock = getBlock( chainLength +  2 * m_keySerializer.getMaxLength() +  m_valueSerializer.getMaxLength( value ) + 1 );
         final int startOutputPos = outputBlock.pos;
         final ByteArray baOutput = getByteArray2( outputBlock );
 
         inputBlock.decreaseEntries(); //release the input block, it may be held by this method for a little longer
         outputBlock.increaseEntries(); //allocate block
-        final Writer writer = m_writer.reset( baOutput );
+        final Writer<V> writer = m_writer.reset( baOutput );
 
-        int retValue = NO_VALUE;
+        V retValue = NO_VALUE;
         boolean inserted = false, updated = false;
 
         while ( iter.hasNext() )
@@ -259,12 +256,12 @@ public class IntIntChainedMap implements IIntIntMap{
      * @param value Value
      * @return A new chain and an old value
      */
-    private UpdateResult addToChainSlow( final int index, final Iterator iter,
+    private UpdateResult<V> addToChainSlow( final int index, final Iterator<V> iter,
                                          final SingleThreadedBlock inputBlock,
-                                         final int inputStartOffset, final int key, final int value )
+                                         final int inputStartOffset, final double key, final V value )
     {
         boolean hasKey = false;
-        int retValue = NO_VALUE;
+        V retValue = NO_VALUE;
         while ( iter.hasNext() )
         {
             iter.advance();
@@ -276,14 +273,14 @@ public class IntIntChainedMap implements IIntIntMap{
         }
         final int chainLength = iter.getBuf().position() - inputStartOffset;
         final int elems = hasKey ? iter.getElems() : iter.getElems() + 1;
-        final SingleThreadedBlock outputBlock = getBlock( 2 * m_singleEntryLength + chainLength + 2 ); //2 for transition from header to chain length
+        final SingleThreadedBlock outputBlock = getBlock( chainLength +  2 * m_keySerializer.getMaxLength() +  m_valueSerializer.getMaxLength( value ) + 2 ); //2 for transition from header to chain length
         final int startOutputPos = outputBlock.pos;
         final ByteArray output = getByteArray2( outputBlock );
 
         inputBlock.decreaseEntries();
         outputBlock.increaseEntries(); //allocate block
         //here we write the correct number of elements upfront
-        final Writer writer = m_writer.reset( output, elems );
+        final Writer<V> writer = m_writer.reset( output, elems );
         boolean inserted = false;
 
         //fully reset the iterator (position on the bucket length)
@@ -319,13 +316,13 @@ public class IntIntChainedMap implements IIntIntMap{
         return m_updateResult.set( retValue, hasKey ? 0 : 1 );
     }
 
-    public int remove( final int key )
+    public V remove( final double key )
     {
         final int idx = getIndex( key, m_data.length() );
         if ( !m_data.select( idx ) )
             return NO_VALUE;
 
-        final UpdateResult res = removeKey( key, idx );
+        final UpdateResult<V> res = removeKey( key, idx );
         if ( res.sizeChange == 0 )
             return NO_VALUE;
         else
@@ -345,16 +342,16 @@ public class IntIntChainedMap implements IIntIntMap{
      * @param idx Key bucket
      * @return Updated or original chain
      */
-    private UpdateResult removeKey( final int key, final int idx )
+    private UpdateResult<V> removeKey( final double key, final int idx )
     {
         final SingleThreadedBlock inputBlock = getBlockByIndex( m_data.getBlockIndex() );
         final int inputStartOffset = m_data.getOffset();
 
         final ByteArray input = getByteArray( inputBlock, inputStartOffset );
-        final Iterator iter = m_iter.reset( input, m_data );
+        final Iterator<V> iter = m_iter.reset( input, m_data );
 
         boolean hasKey = false;
-        int retValue = NO_VALUE;
+        V retValue = NO_VALUE;
         while ( iter.hasNext() )
         {
             iter.advance();
@@ -393,7 +390,7 @@ public class IntIntChainedMap implements IIntIntMap{
 
         final ByteArray output = getByteArray2( inputBlock );
         output.position( inputStartOffset );
-        final Writer writer = m_writer.reset( output, iter.getElems() <= m_data.maxEncodedLength() ? 0 : iter.getElems() - 1 );
+        final Writer<V> writer = m_writer.reset( output, iter.getElems() <= m_data.maxEncodedLength() ? 0 : iter.getElems() - 1 );
         while ( iter.hasNext() )
         {
             iter.advance();
@@ -423,14 +420,14 @@ public class IntIntChainedMap implements IIntIntMap{
     private void rehash( final Buckets old )
     {
         final ByteArray barLocal = new ByteArray();
-        final Iterator iterLocal = new Iterator( m_keySerializer, m_valueSerializer );
+        final Iterator<V> iterLocal = new Iterator<>( m_keySerializer, m_valueSerializer );
 
         for ( int i = 0; i < old.length(); ++i )
             if ( old.select( i ) )
                 rehashInnerStep( old, barLocal, iterLocal );
     }
 
-    private void rehashInnerStep( final Buckets old, final ByteArray bar, final Iterator iter )
+    private void rehashInnerStep( final Buckets old, final ByteArray bar, final Iterator<V> iter )
     {
         final SingleThreadedBlock inputBlock = getBlockByIndex( old.getBlockIndex() );
 
@@ -466,12 +463,12 @@ public class IntIntChainedMap implements IIntIntMap{
      * @param tabSize Bucket table size
      * @return Bucket index
      */
-    private int getIndex( final int key, final int tabSize )
+    private int getIndex( final double key, final int tabSize )
     {
         return Tools.getIndexFast( key, tabSize );
     }
 
-    private static class Iterator    {
+    private static class Iterator<V>    {
         /** Underlying byte buffer */
         private ByteArray buf;
         /** Number of entries in the bucket */
@@ -479,15 +476,15 @@ public class IntIntChainedMap implements IIntIntMap{
         /** Index of the current entry (0-based) */
         private int cur = 0;
         /** Current entry key, initialized by {@code advance} call */
-        private int key;
+        private double key;
         /** Current entry value, initialized by {@code advance} call */
-        private int value;
+        private V value;
         /** Serialization for keys */
-        private final IIntSerializer m_keySerializer;
+        private final IDoubleSerializer m_keySerializer;
         /** Serialization for values */
-        private final IIntSerializer m_valueSerializer;
+        private final IObjectSerializer<V> m_valueSerializer;
 
-        public Iterator( final IIntSerializer keySerializer, final IIntSerializer valueSerializer ) {
+        public Iterator( final IDoubleSerializer keySerializer, final IObjectSerializer<V> valueSerializer ) {
             m_keySerializer = keySerializer;
             m_valueSerializer = valueSerializer;
         }
@@ -498,7 +495,7 @@ public class IntIntChainedMap implements IIntIntMap{
          * @param data A reference to a current Buckets object
          * @return Same iterator object
          */
-        Iterator reset( final ByteArray buf, final Buckets data )
+        Iterator<V> reset( final ByteArray buf, final Buckets data )
         {
             this.buf = buf;
             elems = data.getBlockLength() < data.maxEncodedLength() ? data.getBlockLength() : readUnsignedInt( buf );
@@ -520,13 +517,11 @@ public class IntIntChainedMap implements IIntIntMap{
          */
         public void advance()
         {
-            if ( cur == 0 ) {
+            if ( cur == 0 )
                 key = m_keySerializer.read( buf );
-                value = m_valueSerializer.read( buf );
-            } else {
+            else
                 key = m_keySerializer.readDelta( key, buf, true );
-                value = m_valueSerializer.readDelta( value, buf, false );
-            }
+            value = m_valueSerializer.read( buf );
             ++cur;
         }
 
@@ -543,14 +538,14 @@ public class IntIntChainedMap implements IIntIntMap{
         /**
          * @return A key read by the last {@code advance} call
          */
-        public int getKey() {
+        public double getKey() {
             return key;
         }
 
         /**
          * @return A value read by the last {@code advance} call
          */
-        public int getValue() {
+        public V getValue() {
             return value;
         }
 
@@ -570,21 +565,19 @@ public class IntIntChainedMap implements IIntIntMap{
     /**
      * This class encapsulates the logic used to write all entries into the bucket.
      */
-    private static final class Writer    {
+    private static final class Writer<V>    {
         /** Underlying byte buffer */
         private ByteArray buf;
         /** Is this a first entry (used for delta encoding) */
         private boolean first = true;
         /** Previously written key (used for delta encoding) */
-        private int prevKey;
-        /** Previously written value (used for delta encoding) */
-        private int prevValue;
+        private double prevKey;
         /** Serialization for keys */
-        private final IIntSerializer m_keySerializer;
+        private final IDoubleSerializer m_keySerializer;
         /** Serialization for values */
-        private final IIntSerializer m_valueSerializer;
+        private final IObjectSerializer<V> m_valueSerializer;
 
-        public Writer( final IIntSerializer keySerializer, final IIntSerializer valueSerializer)
+        public Writer( final IDoubleSerializer keySerializer, final IObjectSerializer<V> valueSerializer)
         {
             m_keySerializer = keySerializer;
             m_valueSerializer = valueSerializer;
@@ -597,7 +590,7 @@ public class IntIntChainedMap implements IIntIntMap{
          * @param buf Underlying byte buffer
          * @return this
          */
-        public Writer reset( final ByteArray buf )
+        public Writer<V> reset( final ByteArray buf )
         {
             return reset( buf, 0 );
         }
@@ -608,14 +601,13 @@ public class IntIntChainedMap implements IIntIntMap{
          * @param elems Number of elements to write, don't write anything if this value is not positive
          * @return this
          */
-        public Writer reset( final ByteArray buf, final int elems )
+        public Writer<V> reset( final ByteArray buf, final int elems )
         {
             this.buf = buf;
             if ( elems > 0 )
                 writeUnsignedInt( elems, buf );
             first = true;
             prevKey = 0;
-            prevValue = 0;
             return this;
         }
 
@@ -624,22 +616,19 @@ public class IntIntChainedMap implements IIntIntMap{
          * @param k Key to write
          * @param v Value to write
          */
-        public void writePair( final int k, final int v )
+        public void writePair( final double k, final V v )
         {
             if ( first ) {
                 m_keySerializer.write( k, buf );
-                m_valueSerializer.write( v, buf );
                 first = false;
             }
             else
             {
                 //keys are sorted, so we can write unsigned diff (but serializer will make a final decision)
                 m_keySerializer.writeDelta( prevKey, k, buf, true );
-                //values are NOT sorted
-                m_valueSerializer.writeDelta( prevValue, v, buf, false );
             }
+            m_valueSerializer.write( v, buf );
             prevKey = k;
-            prevValue = v;
         }
     }
 
@@ -671,14 +660,14 @@ public class IntIntChainedMap implements IIntIntMap{
     /**
      * All updating methods generate this structure containing a new chain information
      */
-    private static class UpdateResult    {
-        public int retValue;
+    private static class UpdateResult<V>    {
+        public V retValue;
         public int sizeChange;
 
         public UpdateResult() {
         }
 
-        public UpdateResult set( int retValue, int sizeChange )
+        public UpdateResult<V> set( V retValue, int sizeChange )
         {
             this.retValue = retValue;
             this.sizeChange = sizeChange;

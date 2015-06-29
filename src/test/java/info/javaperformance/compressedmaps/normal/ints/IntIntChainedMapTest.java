@@ -21,7 +21,6 @@ package info.javaperformance.compressedmaps.normal.ints;
 
 import info.javaperformance.compressedmaps.IntMapFactory;
 import junit.framework.TestCase;
-
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
@@ -31,9 +30,8 @@ public class IntIntChainedMapTest extends TestCase
 {
     //fill factors to be tested
     private final static float[] FILL_FACTORS = { 0.25f, 0.5f, 0.75f, 0.9f, 0.99f, 1f, 2f, 3f, 5f, 16f };
-    private final int SIZE = 1000000;
-    private static final int ZERO = 0;
-
+    private final int SIZE = 100000;
+    private static final int NOT_PRESENT = 0;
 
     protected IIntIntMap makeMap( final long size, final float fillFactor )
     {
@@ -46,7 +44,7 @@ public class IntIntChainedMapTest extends TestCase
     public void testPut()
     {
         for ( final float ff : FILL_FACTORS )
-            testPutHelper(ff);
+            testPutHelper( ff );
     }
 
     private void testPutHelper( final float fillFactor )
@@ -54,15 +52,15 @@ public class IntIntChainedMapTest extends TestCase
         final IIntIntMap map = makeMap(100, fillFactor);
         for ( int i = 0; i < SIZE; ++i )
         {
-            assertEquals( ZERO, map.put( i, i ) );
+            assertEquals( NOT_PRESENT, map.put( i, i ) );
 
-            assertEquals( "failed at ff = " + fillFactor, i + 1, map.size() );
+            assertEquals( i + 1, map.size() );
             assertEquals( ( int )i, map.get( i ) );
         }
         //now check the final state
         assertEquals( SIZE, map.size() );
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals( ( int )i, map.get( i ));
+            assertEquals(  ( int )i, map.get( i ));
     }
 
     /**
@@ -71,7 +69,7 @@ public class IntIntChainedMapTest extends TestCase
     public void testPutNegative()
     {
         for ( final float ff : FILL_FACTORS )
-            testPutNegative(ff);
+            testPutNegative( ff );
     }
 
     private void testPutNegative( final float fillFactor )
@@ -79,14 +77,14 @@ public class IntIntChainedMapTest extends TestCase
         final IIntIntMap map = makeMap(100, fillFactor);
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put(-i, -i);
-            assertEquals(i + 1, map.size());
-            assertEquals((int)(-i), map.get( -i ));
+            map.put( -i, -i);
+            assertEquals( i + 1, map.size() );
+            assertEquals(  ( int )( -i ), map.get( -i ));
         }
         //now check the final state
         assertEquals(SIZE, map.size());
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals((int)(-i), map.get( -i ));
+            assertEquals(  ( int )( -i ), map.get( -i ) );
     }
 
     /**
@@ -95,7 +93,7 @@ public class IntIntChainedMapTest extends TestCase
     public void testPutThenUpdate()
     {
         for ( final float ff : FILL_FACTORS )
-            testPutThenUpdate(ff);
+            testPutThenUpdate( ff );
     }
 
     private void testPutThenUpdate( final float fillFactor )
@@ -103,25 +101,25 @@ public class IntIntChainedMapTest extends TestCase
         final IIntIntMap map = makeMap(100, fillFactor);
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put(i, i);
+            map.put( i, i );
             assertEquals( i + 1, map.size());
-            assertEquals( (int)i, map.get( i ));
+            assertEquals( ( int )i, map.get( i ));
         }
         //now check the initial state
         assertEquals(SIZE, map.size());
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals( (int)i, map.get( i ));
+            assertEquals( ( int )i, map.get( i ));
 
         //now try to update all keys
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put(i, i + 1);
-            assertEquals( "Failed at i = " +i + ", ff = " + fillFactor,  SIZE, map.size());
-            assertEquals( (int)(i + 1), map.get( i ));
+            map.put( i, i + 1 );
+            assertEquals( SIZE, map.size() );
+            assertEquals( ( int )( i + 1 ), map.get( i ));
         }
         //and check the final state
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals( (int)(i + 1), map.get( i ));
+            assertEquals( ( int )( i + 1 ), map.get( i ));
     }
 
     /**
@@ -131,14 +129,14 @@ public class IntIntChainedMapTest extends TestCase
     public void testPutRandom()
     {
         for ( final float ff : FILL_FACTORS )
-            testPutRandom(ff);
+            testPutRandom( ff );
     }
 
     private void testPutRandom( final float fillFactor )
     {
         final int seed = ThreadLocalRandom.current().nextInt();
         System.out.println( "testPutRandom: ff = " + fillFactor + ", seed = " + seed);
-        final Random r = new Random(seed);
+        final Random r = new Random( seed );
         final Set<Integer> set = new HashSet<>( SIZE );
         final int[] vals = new int[ SIZE ];
         while ( set.size() < SIZE )
@@ -149,8 +147,8 @@ public class IntIntChainedMapTest extends TestCase
         final IIntIntMap map = makeMap(100, fillFactor);
         for ( i = 0; i < vals.length; ++i )
         {
-            assertEquals( ZERO, map.put(vals[i], (int)vals[i]));
-            assertEquals( "Failed at i = " + i + ", ff= " + fillFactor,  i + 1, map.size());
+            assertEquals( NOT_PRESENT, map.put( vals[i], (int)vals[i]  ) );
+            assertEquals( i + 1, map.size());
             assertEquals( (int)vals[ i ], map.get( vals[ i ] ));
         }
         //now check the final state
@@ -165,7 +163,7 @@ public class IntIntChainedMapTest extends TestCase
     public void testRemove()
     {
         for ( final float ff : FILL_FACTORS )
-            testRemoveHelper(ff);
+            testRemoveHelper( ff );
     }
 
     private void testRemoveHelper( final float fillFactor )
@@ -174,23 +172,23 @@ public class IntIntChainedMapTest extends TestCase
         int addCnt = 0, removeCnt = 0;
         for ( int i = 0; i < SIZE; ++i )
         {
-            assertEquals( ZERO, map.put(addCnt, addCnt) );
+            assertEquals( NOT_PRESENT, map.put( addCnt, addCnt ) );
             assertEquals( i + 1, map.size() );
             addCnt++;
 
-            assertEquals( "Failed for addCnt = " + addCnt + ", ff = " + fillFactor, ZERO, map.put(addCnt, addCnt));
+            assertEquals( NOT_PRESENT, map.put( addCnt, addCnt ) );
             assertEquals( i + 2, map.size() ); //map grows by one element on each iteration
             addCnt++;
 
-            assertEquals("Failed for removeCnt = " + removeCnt + ", ff = " + fillFactor, (int)removeCnt, map.remove(removeCnt));
+            assertEquals( (int)removeCnt, map.remove(removeCnt));
             removeCnt++;
 
-            assertEquals( "Failed for ff = " + fillFactor,  i + 1, map.size()); //map grows by one element on each iteration
+            assertEquals( i + 1, map.size()); //map grows by one element on each iteration
         }
 
         assertEquals( SIZE, map.size() );
         for ( int i = removeCnt; i < addCnt; ++i )
-            assertEquals( (int)i, map.get( i ) );
+            assertEquals( ( int )i, map.get( i ) );
     }
 
     public void testRandomRemove()
@@ -212,18 +210,18 @@ public class IntIntChainedMapTest extends TestCase
         assertEquals(SIZE, keys.length);
 
         for ( int i = 0; i < SIZE; ++i )
-            values[i] = r.nextInt();
+            values[ i ] = r.nextInt();
 
         IIntIntMap m = makeMap( 100, ff );
         int add = 0, remove = 0;
         while ( add < SIZE )
         {
-            assertEquals( ZERO, m.put( keys[ add ], values[ add ] ) );
+            assertEquals( NOT_PRESENT, m.put( keys[ add ], values[ add ] ) );
             ++add;
-            assertEquals( ZERO, m.put( keys[ add ], values[ add ] ) );
+            assertEquals( NOT_PRESENT, m.put( keys[ add ], values[ add ] ) );
             ++add;
 
-            assertEquals( "remove = " + remove, values[ remove ], m.remove( keys[ remove ] ) );
+            assertEquals( values[ remove ], m.remove( keys[ remove ] ) );
             remove++;
 
             assertEquals( remove, m.size() );
@@ -232,7 +230,7 @@ public class IntIntChainedMapTest extends TestCase
         assertEquals( SIZE / 2, m.size() );
 
         for ( int i = 0; i < SIZE / 2; ++i )
-            assertEquals( "Failed at i = " + i, ZERO, m.get( keys[ i ] ) );
+            assertEquals( NOT_PRESENT, m.get( keys[ i ] ) );
         for ( int i = SIZE / 2; i < SIZE; ++i )
             assertEquals( values[ i ], m.get( keys[ i ] ) );
     }

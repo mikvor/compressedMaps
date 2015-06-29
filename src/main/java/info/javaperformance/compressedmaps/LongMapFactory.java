@@ -90,10 +90,22 @@ public class LongMapFactory
         return new LongDoubleChainedMap( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
     }
 
+    public static <V> ILongObjectMap<V> singleThreadedLongObjectMap( final long size, final float fillFactor, final IObjectSerializer<V> valueSerializer )
+    {
+        return new LongObjectChainedMap<V>( size, fillFactor,
+            DefaultLongSerializer.INSTANCE, valueSerializer, SingleThreadedBlockAllocator.DEFAULT_RECYCLE_BOUND );
+    }
+
+    public static<V> ILongObjectMap<V> singleThreadedLongObjectMap( final long size, final float fillFactor,
+                                                   final ILongSerializer keySerializer, final IObjectSerializer<V> valueSerializer,
+                                                   final long blockCacheLimit )
+    {
+        return new LongObjectChainedMap<V>( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
+    }
+
     /////////////////////////////////////////////////////////////
     //  Concurrent maps
     /////////////////////////////////////////////////////////////
-
     public static ILongIntConcurrentMap concurrentLongIntMap( final long size, final float fillFactor )
     {
         return new LongIntConcurrentChainedMap( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultIntSerializer.INSTANCE );
@@ -104,7 +116,6 @@ public class LongMapFactory
     {
         return new LongIntConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
-
     public static ILongLongConcurrentMap concurrentLongLongMap( final long size, final float fillFactor )
     {
         return new LongLongConcurrentChainedMap( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultLongSerializer.INSTANCE );
@@ -115,7 +126,6 @@ public class LongMapFactory
     {
         return new LongLongConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
-
     public static ILongFloatConcurrentMap concurrentLongFloatMap( final long size, final float fillFactor )
     {
         return new LongFloatConcurrentChainedMap( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultFloatSerializer.INSTANCE );
@@ -126,7 +136,6 @@ public class LongMapFactory
     {
         return new LongFloatConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
-
     public static ILongDoubleConcurrentMap concurrentLongDoubleMap( final long size, final float fillFactor )
     {
         return new LongDoubleConcurrentChainedMap( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultDoubleSerializer.INSTANCE );

@@ -33,11 +33,10 @@ import static info.javaperformance.tools.VarLen.writeUnsignedInt;
 
 /**
  * A simple single threaded compressed map. It uses {@code int[]} instead of {@code long[]} for buckets
- * before it allocates 128K blocks, so that the smaller maps can benefit from the even smaller map footprint.
+ * before it allocates 128K blocks (or chain length exceeds 4K), so that the smaller maps can benefit from the even smaller map footprint.
  */
-public class DoubleIntChainedMap implements IDoubleIntMap
-{
-    private static final int NO_VALUE = 0;
+public class DoubleIntChainedMap implements IDoubleIntMap{
+    private static final int NO_VALUE = 0 ;
 
     /*
     We store multiple reusable objects here. They are needed to avoid unnecessary object allocations.
@@ -143,7 +142,7 @@ public class DoubleIntChainedMap implements IDoubleIntMap
         while ( iter.hasNext() ) {
             iter.advance();
             if ( iter.getKey() == key )
-                return iter.value;
+                return iter.getValue();
             else if ( iter.getKey() > key ) //keys are sorted
                 return NO_VALUE;
         }
@@ -252,7 +251,6 @@ public class DoubleIntChainedMap implements IDoubleIntMap
 
     /**
      * This is a special version of previous method which deals with chains of possibly over 127 elements.
-     * Add key/value to a given chain. A chain is locked during the operation, so it can be safely updated
      * @param index Key bucket
      * @param iter Input iterator
      * @param inputBlock Input block
@@ -261,7 +259,8 @@ public class DoubleIntChainedMap implements IDoubleIntMap
      * @param value Value
      * @return A new chain and an old value
      */
-    private UpdateResult addToChainSlow( final int index, final Iterator iter, final SingleThreadedBlock inputBlock,
+    private UpdateResult addToChainSlow( final int index, final Iterator iter,
+                                         final SingleThreadedBlock inputBlock,
                                          final int inputStartOffset, final double key, final int value )
     {
         boolean hasKey = false;
@@ -282,7 +281,7 @@ public class DoubleIntChainedMap implements IDoubleIntMap
         final ByteArray output = getByteArray2( outputBlock );
 
         inputBlock.decreaseEntries();
-        outputBlock.increaseEntries();//allocate block
+        outputBlock.increaseEntries(); //allocate block
         //here we write the correct number of elements upfront
         final Writer writer = m_writer.reset( output, elems );
         boolean inserted = false;
@@ -338,9 +337,10 @@ public class DoubleIntChainedMap implements IDoubleIntMap
 
     /**
      * Remove a given key from a chain.
-     * 2 special cases are supported:
+     * 3 special cases are supported:
      * 1) key not found - same chain is returned
      * 2) removal from a 1-entry long chain - null chain is returned with a valid retValue
+     * 3) removal of the last element in the chain - in most cases only the chain length should be updated
      * @param key Key to remove
      * @param idx Key bucket
      * @return Updated or original chain
@@ -471,9 +471,7 @@ public class DoubleIntChainedMap implements IDoubleIntMap
         return Tools.getIndexFast( key, tabSize );
     }
 
-
-    private static class Iterator
-    {
+    private static class Iterator    {
         /** Underlying byte buffer */
         private ByteArray buf;
         /** Number of entries in the bucket */
@@ -572,16 +570,15 @@ public class DoubleIntChainedMap implements IDoubleIntMap
     /**
      * This class encapsulates the logic used to write all entries into the bucket.
      */
-    private static final class Writer
-    {
+    private static final class Writer    {
         /** Underlying byte buffer */
         private ByteArray buf;
         /** Is this a first entry (used for delta encoding) */
         private boolean first = true;
         /** Previously written key (used for delta encoding) */
-        private double prevKey = 0;
+        private double prevKey;
         /** Previously written value (used for delta encoding) */
-        private int prevValue = 0;
+        private int prevValue;
         /** Serialization for keys */
         private final IDoubleSerializer m_keySerializer;
         /** Serialization for values */
@@ -674,8 +671,7 @@ public class DoubleIntChainedMap implements IDoubleIntMap
     /**
      * All updating methods generate this structure containing a new chain information
      */
-    private static class UpdateResult
-    {
+    private static class UpdateResult    {
         public int retValue;
         public int sizeChange;
 

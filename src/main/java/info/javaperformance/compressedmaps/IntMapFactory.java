@@ -90,10 +90,22 @@ public class IntMapFactory
         return new IntDoubleChainedMap( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
     }
 
+    public static <V> IIntObjectMap<V> singleThreadedIntObjectMap( final long size, final float fillFactor, final IObjectSerializer<V> valueSerializer )
+    {
+        return new IntObjectChainedMap<V>( size, fillFactor,
+            DefaultIntSerializer.INSTANCE, valueSerializer, SingleThreadedBlockAllocator.DEFAULT_RECYCLE_BOUND );
+    }
+
+    public static<V> IIntObjectMap<V> singleThreadedIntObjectMap( final long size, final float fillFactor,
+                                                   final IIntSerializer keySerializer, final IObjectSerializer<V> valueSerializer,
+                                                   final long blockCacheLimit )
+    {
+        return new IntObjectChainedMap<V>( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
+    }
+
     /////////////////////////////////////////////////////////////
     //  Concurrent maps
     /////////////////////////////////////////////////////////////
-
     public static IIntIntConcurrentMap concurrentIntIntMap( final long size, final float fillFactor )
     {
         return new IntIntConcurrentChainedMap( size, fillFactor, DefaultIntSerializer.INSTANCE, DefaultIntSerializer.INSTANCE );
@@ -104,7 +116,6 @@ public class IntMapFactory
     {
         return new IntIntConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
-
     public static IIntLongConcurrentMap concurrentIntLongMap( final long size, final float fillFactor )
     {
         return new IntLongConcurrentChainedMap( size, fillFactor, DefaultIntSerializer.INSTANCE, DefaultLongSerializer.INSTANCE );
@@ -115,7 +126,6 @@ public class IntMapFactory
     {
         return new IntLongConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
-
     public static IIntFloatConcurrentMap concurrentIntFloatMap( final long size, final float fillFactor )
     {
         return new IntFloatConcurrentChainedMap( size, fillFactor, DefaultIntSerializer.INSTANCE, DefaultFloatSerializer.INSTANCE );
@@ -126,7 +136,6 @@ public class IntMapFactory
     {
         return new IntFloatConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
-
     public static IIntDoubleConcurrentMap concurrentIntDoubleMap( final long size, final float fillFactor )
     {
         return new IntDoubleConcurrentChainedMap( size, fillFactor, DefaultIntSerializer.INSTANCE, DefaultDoubleSerializer.INSTANCE );

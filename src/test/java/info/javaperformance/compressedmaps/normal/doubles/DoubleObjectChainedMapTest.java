@@ -20,22 +20,24 @@
 package info.javaperformance.compressedmaps.normal.doubles;
 
 import info.javaperformance.compressedmaps.DoubleMapFactory;
+import info.javaperformance.serializers.GenericStringSerializer;
+import java.nio.charset.StandardCharsets;
 import junit.framework.TestCase;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class DoubleLongChainedMapTest extends TestCase
+public class DoubleObjectChainedMapTest extends TestCase
 {
     //fill factors to be tested
     private final static float[] FILL_FACTORS = { 0.25f, 0.5f, 0.75f, 0.9f, 0.99f, 1f, 2f, 3f, 5f, 16f };
     private final int SIZE = 100000;
-    private static final long NOT_PRESENT = 0;
+    private static final String NOT_PRESENT = null;
 
-    protected IDoubleLongMap makeMap( final long size, final float fillFactor )
+    protected IDoubleObjectMap<String> makeMap( final long size, final float fillFactor )
     {
-        return DoubleMapFactory.singleThreadedDoubleLongMap( size, fillFactor );
+        return DoubleMapFactory.singleThreadedDoubleObjectMap( size, fillFactor, new GenericStringSerializer( StandardCharsets.UTF_8 ) );
     }
 
     /**
@@ -49,18 +51,18 @@ public class DoubleLongChainedMapTest extends TestCase
 
     private void testPutHelper( final float fillFactor )
     {
-        final IDoubleLongMap map = makeMap(100, fillFactor);
+        final IDoubleObjectMap<String> map = makeMap(100, fillFactor);
         for ( int i = 0; i < SIZE; ++i )
         {
-            assertEquals( NOT_PRESENT, map.put( i, i ) );
+            assertEquals( NOT_PRESENT, map.put( i, String.valueOf( i ) ) );
 
             assertEquals( i + 1, map.size() );
-            assertEquals( ( long )i, map.get( i ) );
+            assertEquals( String.valueOf( i ), map.get( i ) );
         }
         //now check the final state
         assertEquals( SIZE, map.size() );
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals(  ( long )i, map.get( i ));
+            assertEquals(  String.valueOf( i ), map.get( i ));
     }
 
     /**
@@ -74,17 +76,17 @@ public class DoubleLongChainedMapTest extends TestCase
 
     private void testPutNegative( final float fillFactor )
     {
-        final IDoubleLongMap map = makeMap(100, fillFactor);
+        final IDoubleObjectMap<String> map = makeMap(100, fillFactor);
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put( -i, -i);
+            map.put( -i, String.valueOf( -i ));
             assertEquals( i + 1, map.size() );
-            assertEquals(  ( long )( -i ), map.get( -i ));
+            assertEquals(  String.valueOf( -i ), map.get( -i ));
         }
         //now check the final state
         assertEquals(SIZE, map.size());
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals(  ( long )( -i ), map.get( -i ) );
+            assertEquals(  String.valueOf( -i ), map.get( -i ) );
     }
 
     /**
@@ -98,28 +100,28 @@ public class DoubleLongChainedMapTest extends TestCase
 
     private void testPutThenUpdate( final float fillFactor )
     {
-        final IDoubleLongMap map = makeMap(100, fillFactor);
+        final IDoubleObjectMap<String> map = makeMap(100, fillFactor);
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put( i, i );
+            map.put( i, String.valueOf( i ) );
             assertEquals( i + 1, map.size());
-            assertEquals( ( long )i, map.get( i ));
+            assertEquals( String.valueOf( i ), map.get( i ));
         }
         //now check the initial state
         assertEquals(SIZE, map.size());
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals( ( long )i, map.get( i ));
+            assertEquals( String.valueOf( i ), map.get( i ));
 
         //now try to update all keys
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put( i, i + 1 );
+            map.put( i, String.valueOf( i + 1 ) );
             assertEquals( SIZE, map.size() );
-            assertEquals( ( long )( i + 1 ), map.get( i ));
+            assertEquals( String.valueOf( i + 1 ), map.get( i ));
         }
         //and check the final state
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals( ( long )( i + 1 ), map.get( i ));
+            assertEquals( String.valueOf( i + 1 ), map.get( i ));
     }
 
     /**
@@ -144,17 +146,17 @@ public class DoubleLongChainedMapTest extends TestCase
         int i = 0;
         for ( final Double v : set )
             vals[ i++ ] = v;
-        final IDoubleLongMap map = makeMap(100, fillFactor);
+        final IDoubleObjectMap<String> map = makeMap(100, fillFactor);
         for ( i = 0; i < vals.length; ++i )
         {
-            assertEquals( NOT_PRESENT, map.put( vals[i], (long)vals[i]  ) );
+            assertEquals( NOT_PRESENT, map.put( vals[i], String.valueOf( vals[ i ] )  ) );
             assertEquals( i + 1, map.size());
-            assertEquals( (long)vals[ i ], map.get( vals[ i ] ));
+            assertEquals( String.valueOf( vals[ i ] ), map.get( vals[ i ] ));
         }
         //now check the final state
         assertEquals( SIZE, map.size() );
         for ( i = 0; i < vals.length; ++i )
-            assertEquals( (long)vals[ i ], map.get( vals[ i ] ) );
+            assertEquals( String.valueOf( vals[ i ] ), map.get( vals[ i ] ) );
     }
 
     /**
@@ -168,19 +170,19 @@ public class DoubleLongChainedMapTest extends TestCase
 
     private void testRemoveHelper( final float fillFactor )
     {
-        final IDoubleLongMap map = makeMap(100, fillFactor);
+        final IDoubleObjectMap<String> map = makeMap(100, fillFactor);
         int addCnt = 0, removeCnt = 0;
         for ( int i = 0; i < SIZE; ++i )
         {
-            assertEquals( NOT_PRESENT, map.put( addCnt, addCnt ) );
+            assertEquals( NOT_PRESENT, map.put( addCnt, String.valueOf( addCnt ) ) );
             assertEquals( i + 1, map.size() );
             addCnt++;
 
-            assertEquals( NOT_PRESENT, map.put( addCnt, addCnt ) );
+            assertEquals( NOT_PRESENT, map.put( addCnt, String.valueOf( addCnt ) ) );
             assertEquals( i + 2, map.size() ); //map grows by one element on each iteration
             addCnt++;
 
-            assertEquals( (long)removeCnt, map.remove(removeCnt));
+            assertEquals( String.valueOf( removeCnt ), map.remove(removeCnt));
             removeCnt++;
 
             assertEquals( i + 1, map.size()); //map grows by one element on each iteration
@@ -188,7 +190,7 @@ public class DoubleLongChainedMapTest extends TestCase
 
         assertEquals( SIZE, map.size() );
         for ( int i = removeCnt; i < addCnt; ++i )
-            assertEquals( ( long )i, map.get( i ) );
+            assertEquals( String.valueOf( i ), map.get( i ) );
     }
 
     public void testRandomRemove()
@@ -200,7 +202,7 @@ public class DoubleLongChainedMapTest extends TestCase
     private void testRandomRemoveHelper( final float ff )
     {
         final Random r = new Random( 1 );
-        final long[] values = new long[ SIZE ];
+        final String[] values = new String[ SIZE ];
         Set<Double> ks = new HashSet<>( SIZE );
         while ( ks.size() < SIZE )
             ks.add( r.nextDouble() );
@@ -210,18 +212,18 @@ public class DoubleLongChainedMapTest extends TestCase
         assertEquals(SIZE, keys.length);
 
         for ( int i = 0; i < SIZE; ++i )
-            values[ i ] = r.nextLong();
+            values[ i ] = String.valueOf( r.nextInt() );
 
-        IDoubleLongMap m = makeMap( 100, ff );
+        IDoubleObjectMap<String> m = makeMap( 100, ff );
         int add = 0, remove = 0;
         while ( add < SIZE )
         {
-            assertEquals( NOT_PRESENT, m.put( keys[ add ], values[ add ] ) );
+            assertEquals( NOT_PRESENT, m.put( keys[ add ], String.valueOf( values[ add ] ) ) );
             ++add;
-            assertEquals( NOT_PRESENT, m.put( keys[ add ], values[ add ] ) );
+            assertEquals( NOT_PRESENT, m.put( keys[ add ], String.valueOf( values[ add ] ) ) );
             ++add;
 
-            assertEquals( values[ remove ], m.remove( keys[ remove ] ) );
+            assertEquals( String.valueOf( values[ remove ] ), m.remove( keys[ remove ] ) );
             remove++;
 
             assertEquals( remove, m.size() );
@@ -232,7 +234,7 @@ public class DoubleLongChainedMapTest extends TestCase
         for ( int i = 0; i < SIZE / 2; ++i )
             assertEquals( NOT_PRESENT, m.get( keys[ i ] ) );
         for ( int i = SIZE / 2; i < SIZE; ++i )
-            assertEquals( values[ i ], m.get( keys[ i ] ) );
+            assertEquals( String.valueOf( values[ i ] ), m.get( keys[ i ] ) );
     }
 
 }

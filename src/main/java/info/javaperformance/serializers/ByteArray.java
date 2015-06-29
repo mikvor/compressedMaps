@@ -64,7 +64,13 @@ public class ByteArray {
 
     public byte get()
     {
-        return m_buf[m_ptr++];
+        return m_buf[ m_ptr++ ];
+    }
+
+    public void get( final byte[] buf, final int offset, final int length )
+    {
+        System.arraycopy( m_buf, m_ptr, buf, offset, length );
+        m_ptr += length;
     }
 
     public void put( final byte v )
