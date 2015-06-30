@@ -137,16 +137,7 @@ public class FloatDoubleChainedMap implements IFloatDoubleMap{
         if ( !m_data.select( getIndex( key, m_data.length() ) ) )
             return NO_VALUE;
 
-        final SingleThreadedBlock input = getBlockByIndex( m_data.getBlockIndex() );
-        final Iterator iter = m_iter.reset( getByteArray( input, m_data.getOffset() ), m_data );
-        while ( iter.hasNext() ) {
-            iter.advance();
-            if ( iter.getKey() == key )
-                return iter.getValue();
-            else if ( iter.getKey() > key ) //keys are sorted
-                return NO_VALUE;
-        }
-        return NO_VALUE;
+        return m_iter.reset( getByteArray( getBlockByIndex( m_data.getBlockIndex() ), m_data.getOffset() ), m_data ).findKey( key, NO_VALUE );
     }
 
     public double put( final float key, final double value )
@@ -520,14 +511,39 @@ public class FloatDoubleChainedMap implements IFloatDoubleMap{
          */
         public void advance()
         {
+            advance( true );
+        }
+
+        private void advance( final boolean readValue )
+        {
             if ( cur == 0 ) {
                 key = m_keySerializer.read( buf );
-                value = m_valueSerializer.read( buf );
+                if ( readValue )
+                    value = m_valueSerializer.read( buf );
             } else {
                 key = m_keySerializer.readDelta( key, buf, true );
-                value = m_valueSerializer.readDelta( value, buf, false );
+                if ( readValue )
+                    value = m_valueSerializer.readDelta( value, buf, false );
             }
             ++cur;
+        }
+
+        /**
+        * method for looking up a value for a given key.
+        * @param key Key to look up
+        * @param noValue Value to return in case of failure
+        * @return Found value or {@code noValue}
+        */
+        public double findKey( final float key, final double noValue )
+        {
+            while ( hasNext() ) {
+                advance();
+                if ( getKey() == key )
+                    return getValue();
+                else if ( getKey() > key ) //keys are sorted
+                    return noValue;
+            }
+            return noValue;
         }
 
         /**

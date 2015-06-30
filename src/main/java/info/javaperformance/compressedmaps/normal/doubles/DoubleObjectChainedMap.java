@@ -134,16 +134,7 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
         if ( !m_data.select( getIndex( key, m_data.length() ) ) )
             return NO_VALUE;
 
-        final SingleThreadedBlock input = getBlockByIndex( m_data.getBlockIndex() );
-        final Iterator<V> iter = m_iter.reset( getByteArray( input, m_data.getOffset() ), m_data );
-        while ( iter.hasNext() ) {
-            iter.advance();
-            if ( iter.getKey() == key )
-                return iter.getValue();
-            else if ( iter.getKey() > key ) //keys are sorted
-                return NO_VALUE;
-        }
-        return NO_VALUE;
+        return m_iter.reset( getByteArray( getBlockByIndex( m_data.getBlockIndex() ), m_data.getOffset() ), m_data ).findKey( key, NO_VALUE );
     }
 
     public V put( final double key, final V value )
@@ -517,12 +508,38 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
          */
         public void advance()
         {
+            advance( true );
+        }
+
+        private void advance( final boolean readValue )
+        {
             if ( cur == 0 )
                 key = m_keySerializer.read( buf );
             else
                 key = m_keySerializer.readDelta( key, buf, true );
-            value = m_valueSerializer.read( buf );
+            if ( readValue )
+                value = m_valueSerializer.read( buf );
             ++cur;
+        }
+
+        /**
+        * Memory allocation efficient method for looking up a value for a given key.
+        * @param key Key to look up
+        * @param noValue Value to return in case of failure
+        * @return Found value or {@code noValue}
+        */
+        public V findKey( final double key, final V noValue )
+        {
+            while ( hasNext() ) {
+                advance( false );
+                if ( getKey() == key )
+                    return m_valueSerializer.read( buf );
+                else if ( getKey() > key ) //keys are sorted
+                    return noValue;
+                else
+                    m_valueSerializer.skip( buf );
+            }
+            return noValue;
         }
 
         /**
