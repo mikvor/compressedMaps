@@ -259,22 +259,19 @@ public class LongLongChainedMap implements ILongLongMap{
         long retValue = NO_VALUE;
         while ( iter.hasNext() ) //look up a key and then fast forward to the end of chain to find out its length
         {
-            iter.advance( false );
+            iter.advance();
             if ( iter.getKey() == key )
             {
                 hasKey = true;
-                retValue = iter.readValue();
+                retValue = iter.getValue();
                 while ( iter.hasNext() )
                     iter.skip();
             }
             else if ( iter.getKey() > key )
             {
-                iter.skipValue();
                 while ( iter.hasNext() )
                     iter.skip();
             }
-            else
-                iter.skipValue();
         }
 
         final int chainLength = iter.getBuf().position() - inputStartOffset;
@@ -329,13 +326,8 @@ public class LongLongChainedMap implements ILongLongMap{
             return NO_VALUE;
 
         final UpdateResult res = removeKey( key, idx );
-        if ( res.sizeChange == 0 )
-            return NO_VALUE;
-        else
-        {
-            m_size += res.sizeChange;
-            return res.retValue;
-        }
+        m_size += res.sizeChange;
+        return res.retValue;
     }
 
     /**
@@ -401,7 +393,7 @@ public class LongLongChainedMap implements ILongLongMap{
         {
             iter.advance();
             if ( iter.getKey() != key )
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
         }
 
         m_data.set( idx, inputBlock.getIndex(), inputStartOffset,

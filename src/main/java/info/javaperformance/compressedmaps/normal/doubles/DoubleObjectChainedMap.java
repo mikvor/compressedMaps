@@ -326,13 +326,8 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
             return NO_VALUE;
 
         final UpdateResult<V> res = removeKey( key, idx );
-        if ( res.sizeChange == 0 )
-            return NO_VALUE;
-        else
-        {
-            m_size += res.sizeChange;
-            return res.retValue;
-        }
+        m_size += res.sizeChange;
+        return res.retValue;
     }
 
     /**
@@ -357,15 +352,17 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
         V retValue = NO_VALUE;
         while ( iter.hasNext() )
         {
-            iter.advance();
+            iter.advance( false );
             if ( iter.getKey() == key )
             {
                 hasKey = true;
-                retValue = iter.getValue();
+                retValue = iter.readValue();
                 break;
             }
             else if ( iter.getKey() > key )
                 break;
+            else
+                iter.skipValue();
         }
         if ( !hasKey )
             return m_updateResult.set( NO_VALUE, 0 );
@@ -396,9 +393,11 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
         final Writer<V> writer = m_writer.reset( output, iter.getElems() <= m_data.maxEncodedLength() ? 0 : iter.getElems() - 1 );
         while ( iter.hasNext() )
         {
-            iter.advance();
+            iter.advance( false );
             if ( iter.getKey() != key )
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
+            else
+                iter.skipValue();
         }
 
         m_data.set( idx, inputBlock.getIndex(), inputStartOffset,
