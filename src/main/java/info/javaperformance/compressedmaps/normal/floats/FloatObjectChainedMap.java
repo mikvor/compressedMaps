@@ -208,14 +208,14 @@ public class FloatObjectChainedMap<V> implements IFloatObjectMap<V>{
 
         while ( iter.hasNext() )
         {
-            iter.advance();
+            iter.advance( false );
             if ( iter.getKey() < key )
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             else if ( iter.getKey() == key )
             {
                 inserted = true;
                 updated = true;
-                retValue = iter.getValue();
+                retValue = iter.readValue();
                 writer.writePair( key, value );
             }
             else
@@ -225,7 +225,7 @@ public class FloatObjectChainedMap<V> implements IFloatObjectMap<V>{
                     inserted = true;
                     writer.writePair( key, value );
                 }
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             }
         }
         if ( !inserted ) //all keys are smaller
@@ -518,7 +518,7 @@ public class FloatObjectChainedMap<V> implements IFloatObjectMap<V>{
             else
                 key = m_keySerializer.readDelta( key, buf, true );
             if ( readValue )
-                value = m_valueSerializer.read( buf );
+                readValue();
             ++cur;
         }
 
@@ -533,13 +533,23 @@ public class FloatObjectChainedMap<V> implements IFloatObjectMap<V>{
             while ( hasNext() ) {
                 advance( false );
                 if ( getKey() == key )
-                    return m_valueSerializer.read( buf );
+                    return readValue();
                 else if ( getKey() > key ) //keys are sorted
                     return noValue;
                 else
-                    m_valueSerializer.skip( buf );
+                    skipValue();
             }
             return noValue;
+        }
+
+        public void skipValue()
+        {
+            m_valueSerializer.skip( buf );
+        }
+
+        public V readValue()
+        {
+            return ( value = m_valueSerializer.read( buf ) );
         }
 
         /**
@@ -548,7 +558,7 @@ public class FloatObjectChainedMap<V> implements IFloatObjectMap<V>{
         public void skip()
         {
             m_keySerializer.skip( buf );
-            m_valueSerializer.skip( buf );
+            skipValue();
             ++cur;
         }
 
@@ -647,6 +657,32 @@ public class FloatObjectChainedMap<V> implements IFloatObjectMap<V>{
             m_valueSerializer.write( v, buf );
             prevKey = k;
         }
+
+
+        /**
+        * Optimization - copy the value binary representation ( do not try to (de)serialize it ).
+        * We always take the iterator key as a key.
+        * @param iter Iterator standing prior to a value
+        */
+        public void transferPair( final Iterator<V> iter )
+        {
+            if ( first ) {
+                m_keySerializer.write( iter.getKey(), buf );
+                first = false;
+            }
+            else
+            {
+                //keys are sorted, so we can write unsigned diff (but serializer will make a final decision)
+                m_keySerializer.writeDelta( prevKey, iter.getKey(), buf, true );
+            }
+            prevKey = iter.getKey();
+            //copy binary representation of a value
+            final ByteArray iterBuf = iter.getBuf();
+            final int startPos = iterBuf.position();
+            iter.skipValue();
+            buf.put( iterBuf.array(), startPos, iterBuf.position() - startPos );
+        }
+
     }
 
     private ByteArray getByteArray( final SingleThreadedBlock ar )

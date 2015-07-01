@@ -21,7 +21,7 @@ package info.javaperformance.compressedmaps.normal.ints;
 
 import info.javaperformance.compressedmaps.IntMapFactory;
 import junit.framework.TestCase;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -98,28 +98,28 @@ public class IntFloatChainedMapTest extends TestCase
 
     private void testPutThenUpdate( final float fillFactor )
     {
-        final IIntFloatMap map = makeMap(100, fillFactor);
+        final IIntFloatMap map = makeMap( 100, fillFactor );
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put( i, i );
-            assertEquals( i + 1, map.size());
-            assertEquals( ( float )i, map.get( i ));
+            assertEquals( NOT_PRESENT, map.put( i, i ) );
+            assertEquals( i + 1, map.size() );
+            assertEquals( ( float )i, map.get( i ) );
         }
         //now check the initial state
-        assertEquals(SIZE, map.size());
+        assertEquals( SIZE, map.size() );
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals( ( float )i, map.get( i ));
+            assertEquals( ( float )i, map.get( i ) );
 
         //now try to update all keys
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put( i, i + 1 );
+            assertEquals( ( float )i, map.put( i, i + 1 ) );
             assertEquals( SIZE, map.size() );
-            assertEquals( ( float )( i + 1 ), map.get( i ));
+            assertEquals( ( float )( i + 1 ), map.get( i ) );
         }
         //and check the final state
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals( ( float )( i + 1 ), map.get( i ));
+            assertEquals( ( float )( i + 1 ), map.get( i ) );
     }
 
     /**
@@ -137,7 +137,7 @@ public class IntFloatChainedMapTest extends TestCase
         final int seed = ThreadLocalRandom.current().nextInt();
         System.out.println( "testPutRandom: ff = " + fillFactor + ", seed = " + seed);
         final Random r = new Random( seed );
-        final Set<Integer> set = new HashSet<>( SIZE );
+        final Set<Integer> set = new LinkedHashSet<>( SIZE );
         final int[] vals = new int[ SIZE ];
         while ( set.size() < SIZE )
             set.add( r.nextInt() );
@@ -201,13 +201,13 @@ public class IntFloatChainedMapTest extends TestCase
     {
         final Random r = new Random( 1 );
         final float[] values = new float[ SIZE ];
-        Set<Integer> ks = new HashSet<>( SIZE );
+        Set<Integer> ks = new LinkedHashSet<>( SIZE );
         while ( ks.size() < SIZE )
             ks.add( r.nextInt() );
         final Integer[] keys = ks.toArray( new Integer[ SIZE ] );
         ks = null;
 
-        assertEquals(SIZE, keys.length);
+        assertEquals( SIZE, keys.length );
 
         for ( int i = 0; i < SIZE; ++i )
             values[ i ] = r.nextFloat();

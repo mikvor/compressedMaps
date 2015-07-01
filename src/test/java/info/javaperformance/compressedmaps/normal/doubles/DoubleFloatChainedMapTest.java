@@ -21,7 +21,7 @@ package info.javaperformance.compressedmaps.normal.doubles;
 
 import info.javaperformance.compressedmaps.DoubleMapFactory;
 import junit.framework.TestCase;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -98,28 +98,28 @@ public class DoubleFloatChainedMapTest extends TestCase
 
     private void testPutThenUpdate( final float fillFactor )
     {
-        final IDoubleFloatMap map = makeMap(100, fillFactor);
+        final IDoubleFloatMap map = makeMap( 100, fillFactor );
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put( i, i );
-            assertEquals( i + 1, map.size());
-            assertEquals( ( float )i, map.get( i ));
+            assertEquals( NOT_PRESENT, map.put( i, i ) );
+            assertEquals( i + 1, map.size() );
+            assertEquals( ( float )i, map.get( i ) );
         }
         //now check the initial state
-        assertEquals(SIZE, map.size());
+        assertEquals( SIZE, map.size() );
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals( ( float )i, map.get( i ));
+            assertEquals( ( float )i, map.get( i ) );
 
         //now try to update all keys
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put( i, i + 1 );
+            assertEquals( ( float )i, map.put( i, i + 1 ) );
             assertEquals( SIZE, map.size() );
-            assertEquals( ( float )( i + 1 ), map.get( i ));
+            assertEquals( ( float )( i + 1 ), map.get( i ) );
         }
         //and check the final state
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals( ( float )( i + 1 ), map.get( i ));
+            assertEquals( ( float )( i + 1 ), map.get( i ) );
     }
 
     /**
@@ -137,7 +137,7 @@ public class DoubleFloatChainedMapTest extends TestCase
         final int seed = ThreadLocalRandom.current().nextInt();
         System.out.println( "testPutRandom: ff = " + fillFactor + ", seed = " + seed);
         final Random r = new Random( seed );
-        final Set<Double> set = new HashSet<>( SIZE );
+        final Set<Double> set = new LinkedHashSet<>( SIZE );
         final double[] vals = new double[ SIZE ];
         while ( set.size() < SIZE )
             set.add( r.nextDouble() );
@@ -201,13 +201,13 @@ public class DoubleFloatChainedMapTest extends TestCase
     {
         final Random r = new Random( 1 );
         final float[] values = new float[ SIZE ];
-        Set<Double> ks = new HashSet<>( SIZE );
+        Set<Double> ks = new LinkedHashSet<>( SIZE );
         while ( ks.size() < SIZE )
             ks.add( r.nextDouble() );
         final Double[] keys = ks.toArray( new Double[ SIZE ] );
         ks = null;
 
-        assertEquals(SIZE, keys.length);
+        assertEquals( SIZE, keys.length );
 
         for ( int i = 0; i < SIZE; ++i )
             values[ i ] = r.nextFloat();

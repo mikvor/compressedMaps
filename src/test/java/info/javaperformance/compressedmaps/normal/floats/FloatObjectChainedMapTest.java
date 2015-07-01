@@ -23,7 +23,7 @@ import info.javaperformance.compressedmaps.FloatMapFactory;
 import info.javaperformance.serializers.GenericStringSerializer;
 import java.nio.charset.StandardCharsets;
 import junit.framework.TestCase;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -100,28 +100,28 @@ public class FloatObjectChainedMapTest extends TestCase
 
     private void testPutThenUpdate( final float fillFactor )
     {
-        final IFloatObjectMap<String> map = makeMap(100, fillFactor);
+        final IFloatObjectMap<String> map = makeMap( 100, fillFactor );
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put( i, String.valueOf( i ) );
-            assertEquals( i + 1, map.size());
-            assertEquals( String.valueOf( i ), map.get( i ));
+            assertEquals( NOT_PRESENT, map.put( i, String.valueOf( i ) ) );
+            assertEquals( i + 1, map.size() );
+            assertEquals( String.valueOf( i ), map.get( i ) );
         }
         //now check the initial state
-        assertEquals(SIZE, map.size());
+        assertEquals( SIZE, map.size() );
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals( String.valueOf( i ), map.get( i ));
+            assertEquals( String.valueOf( i ), map.get( i ) );
 
         //now try to update all keys
         for ( int i = 0; i < SIZE; ++i )
         {
-            map.put( i, String.valueOf( i + 1 ) );
+            assertEquals( String.valueOf( i ), map.put( i, String.valueOf( i + 1 ) ) );
             assertEquals( SIZE, map.size() );
-            assertEquals( String.valueOf( i + 1 ), map.get( i ));
+            assertEquals( String.valueOf( i + 1 ), map.get( i ) );
         }
         //and check the final state
         for ( int i = 0; i < SIZE; ++i )
-            assertEquals( String.valueOf( i + 1 ), map.get( i ));
+            assertEquals( String.valueOf( i + 1 ), map.get( i ) );
     }
 
     /**
@@ -139,7 +139,7 @@ public class FloatObjectChainedMapTest extends TestCase
         final int seed = ThreadLocalRandom.current().nextInt();
         System.out.println( "testPutRandom: ff = " + fillFactor + ", seed = " + seed);
         final Random r = new Random( seed );
-        final Set<Float> set = new HashSet<>( SIZE );
+        final Set<Float> set = new LinkedHashSet<>( SIZE );
         final float[] vals = new float[ SIZE ];
         while ( set.size() < SIZE )
             set.add( r.nextFloat() );
@@ -203,13 +203,13 @@ public class FloatObjectChainedMapTest extends TestCase
     {
         final Random r = new Random( 1 );
         final String[] values = new String[ SIZE ];
-        Set<Float> ks = new HashSet<>( SIZE );
+        Set<Float> ks = new LinkedHashSet<>( SIZE );
         while ( ks.size() < SIZE )
             ks.add( r.nextFloat() );
         final Float[] keys = ks.toArray( new Float[ SIZE ] );
         ks = null;
 
-        assertEquals(SIZE, keys.length);
+        assertEquals( SIZE, keys.length );
 
         for ( int i = 0; i < SIZE; ++i )
             values[ i ] = String.valueOf( r.nextInt() );

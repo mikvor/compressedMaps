@@ -213,7 +213,7 @@ public class IntFloatChainedMap implements IIntFloatMap{
         {
             iter.advance();
             if ( iter.getKey() < key )
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             else if ( iter.getKey() == key )
             {
                 inserted = true;
@@ -228,7 +228,7 @@ public class IntFloatChainedMap implements IIntFloatMap{
                     inserted = true;
                     writer.writePair( key, value );
                 }
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             }
         }
         if ( !inserted ) //all keys are smaller
@@ -546,13 +546,23 @@ public class IntFloatChainedMap implements IIntFloatMap{
             return noValue;
         }
 
+        public void skipValue()
+        {
+            m_valueSerializer.skip( buf );
+        }
+
+        public float readValue()
+        {
+            return ( value = m_valueSerializer.read( buf ) );
+        }
+
         /**
         * Skip the current entry
         */
         public void skip()
         {
             m_keySerializer.skip( buf );
-            m_valueSerializer.skip( buf );
+            skipValue();
             ++cur;
         }
 
@@ -657,6 +667,18 @@ public class IntFloatChainedMap implements IIntFloatMap{
             prevKey = k;
             prevValue = v;
         }
+
+
+        /**
+        * Helper method to transfer an entry from iterator to writer.
+        * We always take the iterator key as a key.
+        * @param iter Iterator standing prior to a value
+        */
+        public void transferPair( final Iterator iter )
+        {
+            writePair( iter.getKey(), iter.getValue() );
+        }
+
     }
 
     private ByteArray getByteArray( final SingleThreadedBlock ar )
