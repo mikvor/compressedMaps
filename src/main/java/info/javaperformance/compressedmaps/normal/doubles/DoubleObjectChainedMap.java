@@ -238,7 +238,8 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
     }
 
     /**
-     * This is a special version of previous method which deals with chains of possibly over 127 elements.
+     * This is a special version of previous method which deals with chains which require storing the chain length
+     * prior to the chain ( compared to being encoded in the buckets ).
      * @param index Key bucket
      * @param iter Input iterator
      * @param inputBlock Input block
@@ -291,13 +292,13 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
 
         while ( iter.hasNext() )
         {
-            iter.advance();
+            iter.advance( false );
             if ( iter.getKey() < key )
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             else if ( iter.getKey() == key )
             {
                 inserted = true;
-                retValue = iter.getValue();
+                retValue = iter.readValue();
                 writer.writePair( key, value );
             }
             else
@@ -307,7 +308,7 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
                     inserted = true;
                     writer.writePair( key, value );
                 }
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             }
         }
         if ( !inserted ) //all keys are smaller
