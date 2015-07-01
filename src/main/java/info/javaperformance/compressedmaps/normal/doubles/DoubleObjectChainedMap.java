@@ -253,15 +253,26 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
     {
         boolean hasKey = false;
         V retValue = NO_VALUE;
-        while ( iter.hasNext() )
+        while ( iter.hasNext() ) //look up a key and then fast forward to the end of chain to find out its length
         {
-            iter.advance();
+            iter.advance( false );
             if ( iter.getKey() == key )
             {
                 hasKey = true;
-                retValue = iter.getValue();
+                retValue = iter.readValue();
+                while ( iter.hasNext() )
+                    iter.skip();
             }
+            else if ( iter.getKey() > key )
+            {
+                iter.skipValue();
+                while ( iter.hasNext() )
+                    iter.skip();
+            }
+            else
+                iter.skipValue();
         }
+
         final int chainLength = iter.getBuf().position() - inputStartOffset;
         final int elems = hasKey ? iter.getElems() : iter.getElems() + 1;
         final SingleThreadedBlock outputBlock = getBlock( chainLength +  2 * m_keySerializer.getMaxLength() +  m_valueSerializer.getMaxLength( value ) + 2 ); //2 for transition from header to chain length
