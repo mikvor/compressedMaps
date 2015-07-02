@@ -164,6 +164,16 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
         m_data.set( idx, output.getIndex(), startPos, 1 );
     }
 
+    private void singleEntryRehash( final SingleThreadedBlock output, final Iterator<V> inputIter, final int idx )
+    {
+        final int startPos = output.pos;
+        final ByteArray bar = getByteArray( output );
+        output.increaseEntries(); //allocate block prior to writing
+        m_writer.reset( bar ).transferPair( inputIter );
+        output.pos = bar.position();
+        m_data.set( idx, output.getIndex(), startPos, 1 );
+    }
+
     /**
      * Add key/value to a given chain. A chain is locked during the operation, so it can be safely updated.
      * The result is written to m_data[index]
@@ -230,6 +240,71 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
         }
         if ( !inserted ) //all keys are smaller
             writer.writePair( key, value );
+
+        outputBlock.pos = baOutput.position();
+        final int sizeChange = updated ? 0 : 1;
+        m_data.set( index, outputBlock.getIndex(), startOutputPos, iter.getElems() + sizeChange );
+        return m_updateResult.set( retValue, sizeChange );
+    }
+
+    private UpdateResult<V> addToChainRehash( final int index, final Iterator<V> inputIter )
+    {
+        if ( !m_data.select( index ) ) {
+            singleEntryRehash( getBlock( m_keySerializer.getMaxLength() + inputIter.getValueLength() + 1 ), inputIter, index );
+            return m_updateResult.set( NO_VALUE, 1 );
+        }
+
+        final SingleThreadedBlock inputBlock = getBlockByIndex( m_data.getBlockIndex() );
+        final int inputStartOffset = m_data.getOffset();
+
+        final ByteArray input = getByteArray( inputBlock, inputStartOffset );
+        final Iterator<V> iter = m_iter.reset( input, m_data );
+        if ( iter.getElems() > m_data.maxEncodedLength() - 2 ) //could grow to 255+, which should be stored in the bucket
+            return addToChainSlow( index, iter, inputBlock, inputStartOffset, inputIter.getKey(), inputIter.readValue() ); //read a value for less common cases
+
+        //calculate the chain length (it helps us to better fill data blocks)
+        while ( iter.hasNext() )
+            iter.skip();
+        final int chainLength = input.position() - inputStartOffset;
+        input.position( inputStartOffset );
+        iter.reset( input, m_data );
+
+        //2* is a safety net here due to possibility that a value may take longer in the delta form compared to original form
+        final SingleThreadedBlock outputBlock = getBlock( chainLength +  2 * m_keySerializer.getMaxLength() + inputIter.getValueLength() + 1 );
+        final int startOutputPos = outputBlock.pos;
+        final ByteArray baOutput = getByteArray2( outputBlock );
+
+        inputBlock.decreaseEntries(); //release the input block, it may be held by this method for a little longer
+        outputBlock.increaseEntries(); //allocate block
+        final Writer<V> writer = m_writer.reset( baOutput );
+
+        V retValue = NO_VALUE;
+        boolean inserted = false, updated = false;
+
+        while ( iter.hasNext() )
+        {
+            iter.advance( false );
+            if ( iter.getKey() < inputIter.getKey() )
+                writer.transferPair( iter );
+            else if ( iter.getKey() == inputIter.getKey() )
+            {
+                inserted = true;
+                updated = true;
+                retValue = iter.readValue();
+                writer.transferPair( inputIter );
+            }
+            else
+            {
+                if ( !inserted )
+                {
+                    inserted = true;
+                    writer.transferPair( inputIter );
+                }
+                writer.transferPair( iter );
+            }
+        }
+        if ( !inserted ) //all keys are smaller
+            writer.transferPair( inputIter );
 
         outputBlock.pos = baOutput.position();
         final int sizeChange = updated ? 0 : 1;
@@ -436,14 +511,14 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
         iter.reset( bar.reset( inputBlock.data, old.getOffset() ), old );
         if ( old.getBlockLength() == 1 ) //shortcut, no data copy for blocklen = 1
         {
-            iter.advance();
+            iter.advance( false );
             final int index = getIndex( iter.getKey(), m_data.length() );
             if ( !m_data.select( index ) )
                 m_data.set( index, old.getBucket() );
             else
             {
                 //copy/update the chain
-                addToChain( index, iter.getKey(), iter.getValue() );
+                addToChainRehash( index, iter );
                 inputBlock.decreaseEntries();
             }
         }
@@ -451,9 +526,9 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
         {
             while ( iter.hasNext() )
             {
-                iter.advance();
+                iter.advance( false );
                 //copy/update the chain
-                addToChain( getIndex( iter.getKey(), m_data.length() ), iter.getKey(), iter.getValue() );
+                addToChainRehash( getIndex( iter.getKey(), m_data.length() ), iter );
             }
             inputBlock.decreaseEntries(); //bucket relocated
         }
@@ -571,6 +646,20 @@ public class DoubleObjectChainedMap<V> implements IDoubleObjectMap<V>{
             m_keySerializer.skip( buf );
             skipValue();
             ++cur;
+        }
+
+        /**
+        * Get value length if the iterator is currently standing prior to the value (using advance(false) ).
+        * This method does not change the input ByteArray / iterator state.
+        * @return The length of value binary representation
+        */
+        public int getValueLength()
+        {
+            final int startPos = buf.position();
+            skipValue();
+            final int res = buf.position() - startPos;
+            buf.position( startPos );
+            return res;
         }
 
         /**
