@@ -30,19 +30,23 @@ import java.nio.charset.CodingErrorAction;
 
 /**
  * String serializer accepting an encoding as an argument
- * todo This is not a thread safe class! Thread safe version will be added once objects support will be added to MT maps.
  */
 public class GenericStringSerializer implements IObjectSerializer<String> {
     private final int m_maxBytesPerChar;
-    private final CharsetEncoder m_encoder;
-    private final CharsetDecoder m_decoder;
-    private ByteBuffer m_ar = ByteBuffer.allocate( 64 );
-    private CharBuffer m_chars = CharBuffer.allocate( 64 );
+    private final Charset m_charset;
+    private final ThreadLocal<CharsetInfo> m_state = new ThreadLocal<CharsetInfo>(){
+        @Override
+        protected CharsetInfo initialValue() {
+            return new CharsetInfo(
+                m_charset.newEncoder().onMalformedInput( CodingErrorAction.REPLACE ).onUnmappableCharacter( CodingErrorAction.REPLACE ),
+                m_charset.newDecoder().onMalformedInput( CodingErrorAction.REPLACE ).onUnmappableCharacter( CodingErrorAction.REPLACE )
+            );
+        }
+    };
 
     public GenericStringSerializer( final Charset charset ) {
-        m_encoder = charset.newEncoder().onMalformedInput( CodingErrorAction.REPLACE ).onUnmappableCharacter( CodingErrorAction.REPLACE );
-        m_decoder = charset.newDecoder().onMalformedInput( CodingErrorAction.REPLACE ).onUnmappableCharacter( CodingErrorAction.REPLACE );
-        m_maxBytesPerChar = ( int ) Math.ceil( m_encoder.maxBytesPerChar() );
+        m_charset = charset;
+        m_maxBytesPerChar = ( int ) Math.ceil( m_charset.newEncoder().maxBytesPerChar() );
     }
 
     @Override
@@ -53,22 +57,13 @@ public class GenericStringSerializer implements IObjectSerializer<String> {
             VarLen.writeSignedInt( 0, buf );
         else
         {
+            final CharsetInfo ci = m_state.get();
             //extend buffers if needed
-            if ( v.length() * m_maxBytesPerChar > m_ar.capacity() )
-                m_ar = ByteBuffer.allocate( v.length() * m_maxBytesPerChar );
-            if ( v.length() > m_chars.capacity() )
-                m_chars = CharBuffer.allocate( v.length() );
+            ci.ensureBufferSize( v.length() * m_maxBytesPerChar, v.length() );
             //put a string in the input buffer
-            m_chars.clear();
-            for ( int i = 0; i < v.length(); ++i )
-                m_chars.put( v.charAt( i ) );
-            m_chars.flip();
-            m_ar.clear();
+            ci.addString( v );
             //and convert it
-            m_encoder.reset().encode( m_chars, m_ar, true );
-
-            VarLen.writeSignedInt( m_ar.position(), buf );
-            buf.put( m_ar.array(), 0, m_ar.position() );
+            ci.convertStringToByteArray( buf );
         }
     }
 
@@ -82,21 +77,14 @@ public class GenericStringSerializer implements IObjectSerializer<String> {
             case 0:
                 return "";
             default:
+                final CharsetInfo ci = m_state.get();
                 //extend buffers if needed
-                if ( m_ar.capacity() < len )
-                    m_ar = ByteBuffer.allocate( len );
-                if ( m_chars.capacity() < len ) //we can not create more than 1 char out of 1 byte
-                    m_chars = CharBuffer.allocate( len );
+                ci.ensureBufferSize( len, len );
                 //fill the input byte buffer with the data
-                m_ar.clear();
-                m_ar.put( buf.array(), buf.position(), len );
-                m_ar.flip();
+                ci.addBytes( buf.array(), buf.position(), len );
                 buf.position( buf.position() + len );
                 //now convert data
-                m_chars.clear();
-                m_decoder.decode( m_ar, m_chars, true );
-                m_chars.flip();
-                return m_chars.toString();
+                return ci.convertToString();
         }
     }
 
@@ -110,5 +98,58 @@ public class GenericStringSerializer implements IObjectSerializer<String> {
     @Override
     public int getMaxLength( final String obj ) {
         return obj == null || obj.isEmpty() ? 1 : ( 5 + obj.length() * m_maxBytesPerChar );
+    }
+
+    private static class CharsetInfo
+    {
+        public final CharsetEncoder m_encoder;
+        public final CharsetDecoder m_decoder;
+        public ByteBuffer m_ar = ByteBuffer.allocate( 64 );
+        public CharBuffer m_chars = CharBuffer.allocate( 64 );
+
+        public CharsetInfo( CharsetEncoder m_encoder, CharsetDecoder m_decoder ) {
+            this.m_encoder = m_encoder;
+            this.m_decoder = m_decoder;
+        }
+
+        public void ensureBufferSize( final int bytesRequired, final int charsRequired )
+        {
+            if ( bytesRequired > m_ar.capacity() )
+                m_ar = ByteBuffer.allocate( bytesRequired );
+            if ( charsRequired > m_chars.capacity() )
+                m_chars = CharBuffer.allocate( charsRequired );
+        }
+
+        public void addBytes( final byte[] ar, final int offset, final int len )
+        {
+            m_ar.clear();
+            m_ar.put( ar, offset, len );
+            m_ar.flip();
+        }
+
+        public void addString( final String v )
+        {
+            m_chars.clear();
+            for ( int i = 0; i < v.length(); ++i )
+                m_chars.put( v.charAt( i ) );
+            m_chars.flip();
+        }
+
+        public String convertToString()
+        {
+            m_chars.clear();
+            m_decoder.decode( m_ar, m_chars, true );
+            m_chars.flip();
+            return m_chars.toString();
+        }
+
+        public void convertStringToByteArray( final ByteArray buf )
+        {
+            m_ar.clear();
+            m_encoder.reset().encode( m_chars, m_ar, true );
+
+            VarLen.writeSignedInt( m_ar.position(), buf );
+            buf.put( m_ar.array(), 0, m_ar.position() );
+        }
     }
 }
