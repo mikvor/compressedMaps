@@ -64,10 +64,9 @@ todo
  * All 3 main operations ({@code get/put/remove}) join rehashing once they detect it is going on. No thread can update
  * the map state once rehashing has started.
  */
-public class DoubleLongConcurrentChainedMap implements IDoubleLongConcurrentMap
-{
+public class DoubleLongConcurrentChainedMap implements IDoubleLongConcurrentMap{
     private static final int CPU_NUMBER = Runtime.getRuntime().availableProcessors();
-    private static final long NO_VALUE = 0;
+    private static final long NO_VALUE = 0 ;
 
     /*
     We store multiple reusable objects here. They are needed to avoid unnecessary object allocations.
@@ -125,7 +124,8 @@ public class DoubleLongConcurrentChainedMap implements IDoubleLongConcurrentMap
      * @throws IllegalArgumentException If {@code fillFactor > 16} or {@code fillFactor <= 0.01}
      */
     public DoubleLongConcurrentChainedMap( final long size, final float fillFactor,
-                                       final IDoubleSerializer keySerializer, final ILongSerializer valueSerializer )
+                                         final IDoubleSerializer keySerializer,
+                                         final ILongSerializer valueSerializer )
     {
         Objects.requireNonNull( keySerializer, "Key serializer must be provided!" );
         Objects.requireNonNull( valueSerializer, "Value serializer must be provided!" );
@@ -194,7 +194,7 @@ public class DoubleLongConcurrentChainedMap implements IDoubleLongConcurrentMap
         while ( iter.hasNext() ) {
             iter.advance();
             if ( iter.getKey() == key )
-                return iter.value;
+                return iter.getValue();
             else if ( iter.getKey() > key ) //keys are sorted
                 return NO_VALUE;
         }
@@ -648,10 +648,10 @@ public class DoubleLongConcurrentChainedMap implements IDoubleLongConcurrentMap
         final int startPos = ThreadLocalRandom.current().nextInt( old.length );
 
         for ( int i = startPos; i < old.length; ++i )
-            if ( !rehashInnerStep(old, dest, barLocal, iterLocal, i) )
+            if ( !rehashInnerStep( old, dest, barLocal, iterLocal, i ) )
                 i += old.length / CPU_NUMBER; //jump ahead to reduce contention / quickly catch up
         for ( int i = 0; i < startPos; ++i )
-            if ( !rehashInnerStep(old, dest, barLocal, iterLocal, i) )
+            if ( !rehashInnerStep( old, dest, barLocal, iterLocal, i ) )
                 i += old.length / CPU_NUMBER; //jump ahead to reduce contention / quickly catch up
     }
 
@@ -708,8 +708,7 @@ public class DoubleLongConcurrentChainedMap implements IDoubleLongConcurrentMap
     }
 
 
-    private static class Iterator
-    {
+    private static class Iterator    {
         /** Underlying byte buffer */
         private ByteArray buf;
         /** Number of entries in the bucket */
@@ -808,8 +807,7 @@ public class DoubleLongConcurrentChainedMap implements IDoubleLongConcurrentMap
     /**
      * This class encapsulates the logic used to write all entries into the bucket.
      */
-    private static final class Writer
-    {
+    private static final class Writer    {
         /** Underlying byte buffer */
         private ByteArray buf;
         /** Is this a first entry (used for delta encoding) */
@@ -828,7 +826,6 @@ public class DoubleLongConcurrentChainedMap implements IDoubleLongConcurrentMap
             m_keySerializer = keySerializer;
             m_valueSerializer = valueSerializer;
         }
-
 
         /**
          * Reset a writer (useful if you need to write multiple entries in one method call).
@@ -949,8 +946,7 @@ public class DoubleLongConcurrentChainedMap implements IDoubleLongConcurrentMap
      * to commit/rollback these changes using CAS. An instance is always written and then read by the same
      * thread, so no synchronization is needed.
      */
-    private static class UpdateResult
-    {
+    private static class UpdateResult    {
         public long chain;
         public long retValue;
         public int sizeChange;

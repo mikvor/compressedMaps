@@ -17,29 +17,31 @@
  *      Mikhail Vorontsov
  */
 
-package info.javaperformance.compressedmaps.concurrent.floats;
+package info.javaperformance.compressedmaps.concurrent.ints;
 
-import info.javaperformance.compressedmaps.FloatMapFactory;
+import info.javaperformance.compressedmaps.IntMapFactory;
+import info.javaperformance.serializers.GenericStringSerializer;
 import junit.framework.TestCase;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class FloatIntConcurrentChainedMapTest extends TestCase
+public class IntObjectConcurrentChainedMapTest extends TestCase
 {
     private static final int PUT_MAP_SIZE = 1000 * 1000;
     private static final int INITIAL_CAPACITY = 1;
-    private static final int ONE = 1 ;
-    private static final int TWO = 2 ;
-    private static final int NOT_PRESENT = 0;
+    private static final String ONE = "1";
+    private static final String TWO = "2";
+    private static final String NOT_PRESENT = null;
 
     private static final float[] FF = { 0.5f, 1, 5 };
     private static final int[] THREADS = { 1, 2, 4, 8, 16, 32 };
 
 
-    protected IFloatIntConcurrentMap getMap( final int size, final float ff )
+    protected IIntObjectConcurrentMap<String> getMap( final int size, final float ff )
     {
-        return FloatMapFactory.concurrentFloatIntMap( size, ff );
+        return IntMapFactory.concurrentIntObjectMap( size, ff, new GenericStringSerializer( StandardCharsets.UTF_8 ) );
     }
 
     /*
@@ -53,7 +55,7 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
 
     private void testPutHelper( final int threads, final float ff ) throws InterruptedException {
         System.out.println( "Running testPutHelper( threads = " + threads +  ", ff = " + ff + " )" );
-        final IFloatIntConcurrentMap map = getMap( INITIAL_CAPACITY, ff );
+        final IIntObjectConcurrentMap<String> map = getMap( INITIAL_CAPACITY, ff );
         final int SECTION = PUT_MAP_SIZE / threads;
         //initial insertion section
         {
@@ -68,8 +70,8 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
 
             //now check the final state
             assertEquals( SECTION * threads, map.size() );
-            for (float n = 0; n < SECTION * threads; ++n)
-                assertEquals( ( int )n, map.get( n ) );
+            for (int n = 0; n < SECTION * threads; ++n)
+                assertEquals( String.valueOf( n ), map.get( n ) );
         }
         //update section
         {
@@ -84,20 +86,20 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
 
             //now check the final state
             assertEquals( SECTION * threads, map.size() );
-            for (float n = 0; n < SECTION * threads; ++n)
+            for (int n = 0; n < SECTION * threads; ++n)
                 assertEquals( ONE, map.get( n ) );
         }
     }
 
     private static class Adder implements Runnable
     {
-        private final float m_from;
-        private final float m_to;
+        private final int m_from;
+        private final int m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IFloatIntConcurrentMap m_map;
+        private final IIntObjectConcurrentMap<String> m_map;
 
-        public Adder( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatIntConcurrentMap map ) {
+        public Adder( int from, int to, CountDownLatch startGate, CountDownLatch endGate, IIntObjectConcurrentMap<String> map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -110,9 +112,9 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
             try {
                 m_startGate.countDown();
                 m_startGate.await();
-                for ( float n = m_from; n < m_to; ++n ) {
-                    assertEquals( NOT_PRESENT, m_map.put( n, ( int )n ) );
-                    assertEquals( ( int )n, m_map.get( n ) );
+                for ( int n = m_from; n < m_to; ++n ) {
+                    assertEquals( NOT_PRESENT, m_map.put( n, String.valueOf( n ) ) );
+                    assertEquals( String.valueOf( n ), m_map.get( n ) );
                 }
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -123,13 +125,13 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
 
     private static class Updater implements Runnable
     {
-        private final float m_from;
-        private final float m_to;
+        private final int m_from;
+        private final int m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IFloatIntConcurrentMap m_map;
+        private final IIntObjectConcurrentMap<String> m_map;
 
-        public Updater( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatIntConcurrentMap map ) {
+        public Updater( int from, int to, CountDownLatch startGate, CountDownLatch endGate, IIntObjectConcurrentMap<String> map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -142,8 +144,8 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
             try {
                 m_startGate.countDown();
                 m_startGate.await();
-                for ( float n = m_from; n < m_to; ++n ) {
-                    assertEquals( ( int )n, m_map.put( n, ONE ) );
+                for ( int n = m_from; n < m_to; ++n ) {
+                    assertEquals( String.valueOf( n ), m_map.put( n, ONE ) );
                     assertEquals( ONE, m_map.get( n ) );
                 }
             } catch (Throwable e) {
@@ -165,7 +167,7 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
 
     private void testAddUpdateRemoveHelper( final int threads, final float ff ) throws InterruptedException {
         System.out.println( "Running testAddUpdateRemoveHelper( threads = " + threads + ", ff = " + ff + " )" );
-        final IFloatIntConcurrentMap map = getMap( INITIAL_CAPACITY, ff );
+        final IIntObjectConcurrentMap<String> map = getMap( INITIAL_CAPACITY, ff );
         final int SECTION = PUT_MAP_SIZE / threads;
         {
             final CountDownLatch start = new CountDownLatch( threads );
@@ -183,7 +185,7 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
         for ( int i = 0; i < threads; ++i )
         {
             //emulate counters
-            float add = i * SECTION, remove = add;
+            int add = i * SECTION, remove = add;
             while ( add < ( i + 1 ) * SECTION )
             {
                 add += 2;
@@ -191,7 +193,7 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
             }
 
             totalSize += add - remove;
-            for ( float j = remove; j < add; ++j )
+            for ( int j = remove; j < add; ++j )
                 assertEquals( TWO, map.get( j ) );
         }
         assertEquals( totalSize, map.size() );
@@ -213,13 +215,13 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
 
     private static class AddUpdateRemover implements Runnable
     {
-        private final float m_from;
-        private final float m_to;
+        private final int m_from;
+        private final int m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IFloatIntConcurrentMap m_map;
+        private final IIntObjectConcurrentMap<String> m_map;
 
-        public AddUpdateRemover( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatIntConcurrentMap map ) {
+        public AddUpdateRemover( int from, int to, CountDownLatch startGate, CountDownLatch endGate, IIntObjectConcurrentMap<String> map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -232,7 +234,7 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
             try {
                 m_startGate.countDown();
                 m_startGate.await();
-                float add = m_from, remove = m_from;
+                int add = m_from, remove = m_from;
                 while ( add < m_to )
                 {
                     assertEquals( NOT_PRESENT, m_map.put( add, ONE ) );
@@ -242,7 +244,7 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
                     assertEquals( ONE, m_map.remove( remove++ ) );
                 }
 
-                for ( float n = remove; n < add; ++n ) {
+                for ( int n = remove; n < add; ++n ) {
                     assertEquals( ONE, m_map.put( n, TWO ) );
                     assertEquals( TWO, m_map.get( n ) );
                 }
@@ -255,13 +257,13 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
 
     private static class Remover implements Runnable
     {
-        private final float m_from;
-        private final float m_to;
+        private final int m_from;
+        private final int m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IFloatIntConcurrentMap m_map;
+        private final IIntObjectConcurrentMap<String> m_map;
 
-        public Remover( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatIntConcurrentMap map ) {
+        public Remover( int from, int to, CountDownLatch startGate, CountDownLatch endGate, IIntObjectConcurrentMap<String> map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -274,9 +276,9 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
             try {
                 m_startGate.countDown();
                 m_startGate.await();
-                for ( float n = m_from; n < m_to; ++n )
+                for ( int n = m_from; n < m_to; ++n )
                     m_map.remove( n );
-                for ( float n = m_from; n < m_to; ++n )
+                for ( int n = m_from; n < m_to; ++n )
                     assertEquals( NOT_PRESENT, m_map.remove( n ) );
             } catch (Throwable e) {
                 e.printStackTrace();

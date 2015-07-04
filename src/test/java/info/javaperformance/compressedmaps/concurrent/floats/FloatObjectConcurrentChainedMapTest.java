@@ -20,26 +20,28 @@
 package info.javaperformance.compressedmaps.concurrent.floats;
 
 import info.javaperformance.compressedmaps.FloatMapFactory;
+import info.javaperformance.serializers.GenericStringSerializer;
+import java.nio.charset.StandardCharsets;
 import junit.framework.TestCase;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class FloatIntConcurrentChainedMapTest extends TestCase
+public class FloatObjectConcurrentChainedMapTest extends TestCase
 {
     private static final int PUT_MAP_SIZE = 1000 * 1000;
     private static final int INITIAL_CAPACITY = 1;
-    private static final int ONE = 1 ;
-    private static final int TWO = 2 ;
-    private static final int NOT_PRESENT = 0;
+    private static final String ONE = "1";
+    private static final String TWO = "2";
+    private static final String NOT_PRESENT = null;
 
     private static final float[] FF = { 0.5f, 1, 5 };
     private static final int[] THREADS = { 1, 2, 4, 8, 16, 32 };
 
 
-    protected IFloatIntConcurrentMap getMap( final int size, final float ff )
+    protected IFloatObjectConcurrentMap<String> getMap( final int size, final float ff )
     {
-        return FloatMapFactory.concurrentFloatIntMap( size, ff );
+        return FloatMapFactory.concurrentFloatObjectMap( size, ff, new GenericStringSerializer( StandardCharsets.UTF_8 ) );
     }
 
     /*
@@ -53,7 +55,7 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
 
     private void testPutHelper( final int threads, final float ff ) throws InterruptedException {
         System.out.println( "Running testPutHelper( threads = " + threads +  ", ff = " + ff + " )" );
-        final IFloatIntConcurrentMap map = getMap( INITIAL_CAPACITY, ff );
+        final IFloatObjectConcurrentMap<String> map = getMap( INITIAL_CAPACITY, ff );
         final int SECTION = PUT_MAP_SIZE / threads;
         //initial insertion section
         {
@@ -69,7 +71,7 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
             //now check the final state
             assertEquals( SECTION * threads, map.size() );
             for (float n = 0; n < SECTION * threads; ++n)
-                assertEquals( ( int )n, map.get( n ) );
+                assertEquals( String.valueOf( n ), map.get( n ) );
         }
         //update section
         {
@@ -95,9 +97,9 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
         private final float m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IFloatIntConcurrentMap m_map;
+        private final IFloatObjectConcurrentMap<String> m_map;
 
-        public Adder( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatIntConcurrentMap map ) {
+        public Adder( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatObjectConcurrentMap<String> map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -111,8 +113,8 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
                 m_startGate.countDown();
                 m_startGate.await();
                 for ( float n = m_from; n < m_to; ++n ) {
-                    assertEquals( NOT_PRESENT, m_map.put( n, ( int )n ) );
-                    assertEquals( ( int )n, m_map.get( n ) );
+                    assertEquals( NOT_PRESENT, m_map.put( n, String.valueOf( n ) ) );
+                    assertEquals( String.valueOf( n ), m_map.get( n ) );
                 }
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -127,9 +129,9 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
         private final float m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IFloatIntConcurrentMap m_map;
+        private final IFloatObjectConcurrentMap<String> m_map;
 
-        public Updater( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatIntConcurrentMap map ) {
+        public Updater( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatObjectConcurrentMap<String> map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -143,7 +145,7 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
                 m_startGate.countDown();
                 m_startGate.await();
                 for ( float n = m_from; n < m_to; ++n ) {
-                    assertEquals( ( int )n, m_map.put( n, ONE ) );
+                    assertEquals( String.valueOf( n ), m_map.put( n, ONE ) );
                     assertEquals( ONE, m_map.get( n ) );
                 }
             } catch (Throwable e) {
@@ -165,7 +167,7 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
 
     private void testAddUpdateRemoveHelper( final int threads, final float ff ) throws InterruptedException {
         System.out.println( "Running testAddUpdateRemoveHelper( threads = " + threads + ", ff = " + ff + " )" );
-        final IFloatIntConcurrentMap map = getMap( INITIAL_CAPACITY, ff );
+        final IFloatObjectConcurrentMap<String> map = getMap( INITIAL_CAPACITY, ff );
         final int SECTION = PUT_MAP_SIZE / threads;
         {
             final CountDownLatch start = new CountDownLatch( threads );
@@ -217,9 +219,9 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
         private final float m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IFloatIntConcurrentMap m_map;
+        private final IFloatObjectConcurrentMap<String> m_map;
 
-        public AddUpdateRemover( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatIntConcurrentMap map ) {
+        public AddUpdateRemover( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatObjectConcurrentMap<String> map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;
@@ -259,9 +261,9 @@ public class FloatIntConcurrentChainedMapTest extends TestCase
         private final float m_to;
         private final CountDownLatch m_startGate;
         private final CountDownLatch m_endGate;
-        private final IFloatIntConcurrentMap m_map;
+        private final IFloatObjectConcurrentMap<String> m_map;
 
-        public Remover( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatIntConcurrentMap map ) {
+        public Remover( float from, float to, CountDownLatch startGate, CountDownLatch endGate, IFloatObjectConcurrentMap<String> map ) {
             m_from = from;
             m_to = to;
             m_startGate = startGate;

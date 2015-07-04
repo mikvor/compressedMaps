@@ -92,7 +92,7 @@ public class LongMapFactory
 
     public static <V> ILongObjectMap<V> singleThreadedLongObjectMap( final long size, final float fillFactor, final IObjectSerializer<V> valueSerializer )
     {
-        return new LongObjectChainedMap<V>( size, fillFactor,
+        return new LongObjectChainedMap<>( size, fillFactor,
             DefaultLongSerializer.INSTANCE, valueSerializer, SingleThreadedBlockAllocator.DEFAULT_RECYCLE_BOUND );
     }
 
@@ -100,51 +100,71 @@ public class LongMapFactory
                                                    final ILongSerializer keySerializer, final IObjectSerializer<V> valueSerializer,
                                                    final long blockCacheLimit )
     {
-        return new LongObjectChainedMap<V>( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
+        return new LongObjectChainedMap<>( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
     }
 
     /////////////////////////////////////////////////////////////
     //  Concurrent maps
     /////////////////////////////////////////////////////////////
+
     public static ILongIntConcurrentMap concurrentLongIntMap( final long size, final float fillFactor )
     {
         return new LongIntConcurrentChainedMap( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultIntSerializer.INSTANCE );
     }
 
-    public static ILongIntConcurrentMap concurrentLongIntMap( final long size, final float fillFactor,
-                                                         final ILongSerializer keySerializer, final IIntSerializer valueSerializer )
+    public static  ILongIntConcurrentMap concurrentLongIntMap( final long size, final float fillFactor,
+                                                         final ILongSerializer keySerializer,
+                                                         final IIntSerializer valueSerializer )
     {
         return new LongIntConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
+
     public static ILongLongConcurrentMap concurrentLongLongMap( final long size, final float fillFactor )
     {
         return new LongLongConcurrentChainedMap( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultLongSerializer.INSTANCE );
     }
 
-    public static ILongLongConcurrentMap concurrentLongLongMap( final long size, final float fillFactor,
-                                                         final ILongSerializer keySerializer, final ILongSerializer valueSerializer )
+    public static  ILongLongConcurrentMap concurrentLongLongMap( final long size, final float fillFactor,
+                                                         final ILongSerializer keySerializer,
+                                                         final ILongSerializer valueSerializer )
     {
         return new LongLongConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
+
     public static ILongFloatConcurrentMap concurrentLongFloatMap( final long size, final float fillFactor )
     {
         return new LongFloatConcurrentChainedMap( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultFloatSerializer.INSTANCE );
     }
 
-    public static ILongFloatConcurrentMap concurrentLongFloatMap( final long size, final float fillFactor,
-                                                         final ILongSerializer keySerializer, final IFloatSerializer valueSerializer )
+    public static  ILongFloatConcurrentMap concurrentLongFloatMap( final long size, final float fillFactor,
+                                                         final ILongSerializer keySerializer,
+                                                         final IFloatSerializer valueSerializer )
     {
         return new LongFloatConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
+
     public static ILongDoubleConcurrentMap concurrentLongDoubleMap( final long size, final float fillFactor )
     {
         return new LongDoubleConcurrentChainedMap( size, fillFactor, DefaultLongSerializer.INSTANCE, DefaultDoubleSerializer.INSTANCE );
     }
 
-    public static ILongDoubleConcurrentMap concurrentLongDoubleMap( final long size, final float fillFactor,
-                                                         final ILongSerializer keySerializer, final IDoubleSerializer valueSerializer )
+    public static  ILongDoubleConcurrentMap concurrentLongDoubleMap( final long size, final float fillFactor,
+                                                         final ILongSerializer keySerializer,
+                                                         final IDoubleSerializer valueSerializer )
     {
         return new LongDoubleConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
+    }
+
+    public static <V> ILongObjectConcurrentMap<V> concurrentLongObjectMap( final long size, final float fillFactor, final IObjectSerializer<V> valueSerializer )
+    {
+        return new LongObjectConcurrentChainedMap<>( size, fillFactor, DefaultLongSerializer.INSTANCE, valueSerializer );
+    }
+
+    public static <V> ILongObjectConcurrentMap<V> concurrentLongObjectMap( final long size, final float fillFactor,
+                                                         final ILongSerializer keySerializer,
+                                                         final IObjectSerializer<V> valueSerializer )
+    {
+        return new LongObjectConcurrentChainedMap<>( size, fillFactor, keySerializer, valueSerializer );
     }
 
 }

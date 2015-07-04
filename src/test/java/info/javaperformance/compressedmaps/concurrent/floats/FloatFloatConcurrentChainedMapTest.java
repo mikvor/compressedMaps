@@ -29,9 +29,9 @@ public class FloatFloatConcurrentChainedMapTest extends TestCase
 {
     private static final int PUT_MAP_SIZE = 1000 * 1000;
     private static final int INITIAL_CAPACITY = 1;
-    private static final float ZERO = 0;
-    private static final float ONE = 1;
-    private static final float TWO = 2;
+    private static final float ONE = 1 ;
+    private static final float TWO = 2 ;
+    private static final float NOT_PRESENT = 0;
 
     private static final float[] FF = { 0.5f, 1, 5 };
     private static final int[] THREADS = { 1, 2, 4, 8, 16, 32 };
@@ -64,26 +64,26 @@ public class FloatFloatConcurrentChainedMapTest extends TestCase
                 t.start();
             }
             //wait for the completion
-            end.await(100, TimeUnit.SECONDS); //more than enough, needed if one of threads dies
+            end.await( 100, TimeUnit.SECONDS ); //more than enough, needed if one of threads dies
 
             //now check the final state
-            assertEquals(SECTION * threads, map.size());
+            assertEquals( SECTION * threads, map.size() );
             for (float n = 0; n < SECTION * threads; ++n)
-                assertEquals( ( float ) n, map.get( n ) );
+                assertEquals( ( float )n, map.get( n ) );
         }
         //update section
         {
-            final CountDownLatch start = new CountDownLatch(threads);
-            final CountDownLatch end = new CountDownLatch(threads);
-            for (int i = 0; i < threads; ++i) {
-                final Thread t = new Thread(new Updater(i * SECTION, (i + 1) * SECTION, start, end, map));
+            final CountDownLatch start = new CountDownLatch( threads );
+            final CountDownLatch end = new CountDownLatch( threads );
+            for ( int i = 0; i < threads; ++i ) {
+                final Thread t = new Thread(new Updater( i * SECTION, (i + 1) * SECTION, start, end, map ) );
                 t.start();
             }
             //wait for the completion
-            end.await(100, TimeUnit.SECONDS); //more than enough, needed if one of threads dies
+            end.await( 100, TimeUnit.SECONDS ); //more than enough, needed if one of threads dies
 
             //now check the final state
-            assertEquals(SECTION * threads, map.size());
+            assertEquals( SECTION * threads, map.size() );
             for (float n = 0; n < SECTION * threads; ++n)
                 assertEquals( ONE, map.get( n ) );
         }
@@ -111,8 +111,8 @@ public class FloatFloatConcurrentChainedMapTest extends TestCase
                 m_startGate.countDown();
                 m_startGate.await();
                 for ( float n = m_from; n < m_to; ++n ) {
-                    assertEquals( ZERO, m_map.put( n, (float) n ) );
-                    assertEquals( ( float ) n, m_map.get( n ) );
+                    assertEquals( NOT_PRESENT, m_map.put( n, ( float )n ) );
+                    assertEquals( ( float )n, m_map.get( n ) );
                 }
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -143,7 +143,7 @@ public class FloatFloatConcurrentChainedMapTest extends TestCase
                 m_startGate.countDown();
                 m_startGate.await();
                 for ( float n = m_from; n < m_to; ++n ) {
-                    assertEquals( (float) n, m_map.put(n, ONE));
+                    assertEquals( ( float )n, m_map.put( n, ONE ) );
                     assertEquals( ONE, m_map.get( n ) );
                 }
             } catch (Throwable e) {
@@ -171,11 +171,11 @@ public class FloatFloatConcurrentChainedMapTest extends TestCase
             final CountDownLatch start = new CountDownLatch( threads );
             final CountDownLatch end = new CountDownLatch( threads );
             for (int i = 0; i < threads; ++i) {
-                final Thread t = new Thread(new AddUpdateRemover(i * SECTION, (i + 1) * SECTION, start, end, map));
+                final Thread t = new Thread( new AddUpdateRemover( i * SECTION, (i + 1) * SECTION, start, end, map ) );
                 t.start();
             }
             //wait for the completion
-            end.await(100, TimeUnit.SECONDS); //more than enough, needed if one of threads dies
+            end.await( 100, TimeUnit.SECONDS ); //more than enough, needed if one of threads dies
         }
 
         //now check the final state
@@ -192,20 +192,20 @@ public class FloatFloatConcurrentChainedMapTest extends TestCase
 
             totalSize += add - remove;
             for ( float j = remove; j < add; ++j )
-                assertEquals( "Failed for j = " + j, TWO, map.get( j ) );
+                assertEquals( TWO, map.get( j ) );
         }
-        assertEquals( totalSize, map.size());
+        assertEquals( totalSize, map.size() );
 
         //now remove everything twice
         {
             final CountDownLatch start = new CountDownLatch( threads );
             final CountDownLatch end = new CountDownLatch( threads );
             for (int i = 0; i < threads; ++i) {
-                final Thread t = new Thread(new Remover(i * SECTION, i == threads - 1 ? PUT_MAP_SIZE : (i + 1) * SECTION, start, end, map));
+                final Thread t = new Thread( new Remover( i * SECTION, i == threads - 1 ? PUT_MAP_SIZE : (i + 1) * SECTION, start, end, map ) );
                 t.start();
             }
             //wait for the completion
-            end.await(100, TimeUnit.SECONDS); //more than enough, needed if one of threads dies
+            end.await( 100, TimeUnit.SECONDS ); //more than enough, needed if one of threads dies
         }
 
         assertEquals( 0, map.size() );
@@ -235,18 +235,15 @@ public class FloatFloatConcurrentChainedMapTest extends TestCase
                 float add = m_from, remove = m_from;
                 while ( add < m_to )
                 {
-                    assertEquals( ZERO, m_map.put( add, ONE ) );
+                    assertEquals( NOT_PRESENT, m_map.put( add, ONE ) );
                     assertEquals( ONE, m_map.get( add++ ) );
-                    assertEquals( ZERO, m_map.put( add, ONE ) );
+                    assertEquals( NOT_PRESENT, m_map.put( add, ONE ) );
                     assertEquals( ONE, m_map.get( add++ ) );
-                    final float preRemove = m_map.get( remove );
-                    final float removeRes = m_map.remove(remove++);
-                    if ( removeRes != ONE )
-                        fail( "failed for remove = " + ( remove - 1 ) + ", map.get(" + (remove - 1) + ") = " + m_map.get( remove-1) + ", preRemove = " + preRemove + ", removeRes = " + removeRes );
+                    assertEquals( ONE, m_map.remove( remove++ ) );
                 }
 
                 for ( float n = remove; n < add; ++n ) {
-                    assertEquals( "failed for n = " + n, ONE, m_map.put( n, TWO ) );
+                    assertEquals( ONE, m_map.put( n, TWO ) );
                     assertEquals( TWO, m_map.get( n ) );
                 }
             } catch (Throwable e) {
@@ -280,7 +277,7 @@ public class FloatFloatConcurrentChainedMapTest extends TestCase
                 for ( float n = m_from; n < m_to; ++n )
                     m_map.remove( n );
                 for ( float n = m_from; n < m_to; ++n )
-                    assertEquals( ZERO, m_map.remove( n ) );
+                    assertEquals( NOT_PRESENT, m_map.remove( n ) );
             } catch (Throwable e) {
                 e.printStackTrace();
             }

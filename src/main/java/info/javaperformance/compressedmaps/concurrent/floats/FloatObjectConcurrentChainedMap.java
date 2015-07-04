@@ -17,7 +17,7 @@
  *      Mikhail Vorontsov
  */
 
-package info.javaperformance.compressedmaps.concurrent.longs;
+package info.javaperformance.compressedmaps.concurrent.floats;
 
 import info.javaperformance.malloc.Block;
 import info.javaperformance.malloc.ConcurrentBlockAllocator;
@@ -64,30 +64,30 @@ todo
  * All 3 main operations ({@code get/put/remove}) join rehashing once they detect it is going on. No thread can update
  * the map state once rehashing has started.
  */
-public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
+public class FloatObjectConcurrentChainedMap<V> implements IFloatObjectConcurrentMap<V>{
     private static final int CPU_NUMBER = Runtime.getRuntime().availableProcessors();
-    private static final double NO_VALUE = 0 ;
+    private  final V NO_VALUE = null ;
 
     /*
     We store multiple reusable objects here. They are needed to avoid unnecessary object allocations.
     These objects should not be static - some of the are initialized with map specific serializers, some may simply
     keep some map state for longer than needed.
      */
-    private final ThreadLocal<Iterator> s_iters = new ThreadLocal<>();
+    private final ThreadLocal<Iterator<V>> s_iters = new ThreadLocal<>();
     private final ThreadLocal<ByteArray> s_bar1 = new ThreadLocal<>();
     private final ThreadLocal<ByteArray> s_bar2 = new ThreadLocal<>();
-    private final ThreadLocal<Writer> s_writers = new ThreadLocal<>();
-    private final ThreadLocal<UpdateResult> s_updateRes = new ThreadLocal<UpdateResult>(){
+    private final ThreadLocal<Writer<V>> s_writers = new ThreadLocal<>();
+    private final ThreadLocal<UpdateResult<V>> s_updateRes = new ThreadLocal<UpdateResult<V>>(){
         @Override
-        protected UpdateResult initialValue() {
-            return new UpdateResult();
+        protected UpdateResult<V> initialValue() {
+            return new UpdateResult<>();
         }
     };
 
     /** Key serializer */
-    private final ILongSerializer m_keySerializer;
+    private final IFloatSerializer m_keySerializer;
     /** Value serializer */
-    private final IDoubleSerializer m_valueSerializer;
+    private final IObjectSerializer<V> m_valueSerializer;
     /** Original fill factor */
     private final float m_fillFactor;
     /**
@@ -105,9 +105,6 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
     /** This object helps us not to allocate extra long[] in {@code changeSize} */
     private final LongAllocator m_longAlloc = new LongAllocator();
 
-    /** Max length of a single entry - optimization */
-    private final int m_singleEntryLength;
-
     /**
      * Create a map with a given size, fill factor and key/value serializers
      * @param size Expected map size
@@ -123,9 +120,9 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
      * @throws NullPointerException If {@code keySerializer == null} or {@code valueSerializer == null}
      * @throws IllegalArgumentException If {@code fillFactor > 16} or {@code fillFactor <= 0.01}
      */
-    public LongDoubleConcurrentChainedMap( final long size, final float fillFactor,
-                                         final ILongSerializer keySerializer,
-                                         final IDoubleSerializer valueSerializer )
+    public FloatObjectConcurrentChainedMap( final long size, final float fillFactor,
+                                         final IFloatSerializer keySerializer,
+                                         final IObjectSerializer<V> valueSerializer )
     {
         Objects.requireNonNull( keySerializer, "Key serializer must be provided!" );
         Objects.requireNonNull( valueSerializer, "Value serializer must be provided!" );
@@ -151,7 +148,6 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
                 threshold *= 2;
         }
         m_data = new AtomicReference<>( new Buffers( m_longAlloc.allocate( newCapacity ), null, threshold, 0, 2 ) );
-        m_singleEntryLength = m_keySerializer.getMaxLength() + m_valueSerializer.getMaxLength() + 1; //optimization
     }
 
     /**
@@ -165,7 +161,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
     }
 
     @Override
-    public double get( final long key )
+    public V get( final float key )
     {
         final Buffers buffers = m_data.get();
         if ( buffers.old != null )
@@ -190,7 +186,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         if ( input == null )
             return get( key ); //someone has relocated the data from this block, need to retry because we have a valid bucket
 
-        final Iterator iter = getIterator().reset( getByteArray( input, getOffset( bucket ) ), getBlockLength( bucket ) );
+        final Iterator<V> iter = getIterator().reset( getByteArray( input, getOffset( bucket ) ), getBlockLength( bucket ) );
         while ( iter.hasNext() ) {
             iter.advance();
             if ( iter.getKey() == key )
@@ -202,7 +198,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
     }
 
     @Override
-    public double put( final long key, final double value )
+    public V put( final float key, final V value )
     {
         Buffers buffers = m_data.get();
         if ( buffers.old != null ) {
@@ -223,7 +219,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         while ( true )
         {
             //copy/update the chain
-            final UpdateResult res = addToChain( bucket, key, value );
+            final UpdateResult<V> res = addToChain( bucket, key, value );
             /*
              Thread safety here: if we got to this point, we know that 'buffers' belong to stable state.
              It means it is either safe to set bucket here (stable state) or buffers.cur point to the
@@ -238,7 +234,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
                 if (res.input != null) //could be null for new bucket
                     res.input.decreaseEntries();
 
-                final double ret = res.retValue; //must be saved in case of rehash
+                final V ret = res.retValue; //must be saved in case of rehash
                 changeSize(res.sizeChange, buffers, getBlockLength( res.chain ) );
                 return ret;
             }
@@ -264,7 +260,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
     /*
     A version of {@code put}, which is called from rehashing only. It does not need to detect rehashing in progress.
      */
-    private void doPutRehash( final long[] tab, final long key, final double value )
+    private void doPutRehash( final long[] tab, final float key, final V value )
     {
         final int idx = getIndex( key, tab.length );
         long bucket = getBucket( tab, idx );
@@ -273,7 +269,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         while ( true )
         {
             //copy/update the chain
-            final UpdateResult res = addToChain( bucket, key, value );
+            final UpdateResult<V> res = addToChain( bucket, key, value );
             if ( res != null && compareAndSet( tab, idx, bucket, res.chain ) ) {
                 //commit usage changes to input block (output already updated)
                 if ( res.input != null ) //could be null for new bucket
@@ -300,7 +296,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
      * @param value Value
      * @return A long pointing to the written record
      */
-    private long singleEntry( final Block output, final long key, final double value )
+    private long singleEntry( final Block output, final float key, final V value )
     {
         final int startPos = output.pos;
         final ByteArray bar = getByteArray( output );
@@ -317,10 +313,10 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
      * @param value Value
      * @return A new chain and an old value
      */
-    private UpdateResult addToChain( final long bucket, final long key, final double value )
+    private UpdateResult<V> addToChain( final long bucket, final float key, final V value )
     {
         if ( bucket == EMPTY ) {
-            final Block output = m_blockAllocator.getThreadLocalBlock( m_singleEntryLength );
+            final Block output = m_blockAllocator.getThreadLocalBlock( m_keySerializer.getMaxLength() + m_valueSerializer.getMaxLength( value ) + 1 );
             final int outputStart = output.pos;
             return getUpdateResult().set( singleEntry( output, key, value ), NO_VALUE, 1, null, output, outputStart );
         }
@@ -331,7 +327,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         final int inputStartOffset = getOffset( bucket );
 
         final ByteArray input = getByteArray( inputBlock, inputStartOffset );
-        final Iterator iter = getIterator().reset( input, getBlockLength( bucket ) );
+        final Iterator<V> iter = getIterator().reset( input, getBlockLength( bucket ) );
         if ( iter.getElems() > MAX_ENCODED_LENGTH - 2 ) //could grow to 255+, which should be stored in the bucket
             return addToChainSlow( bucket, iter, inputBlock, inputStartOffset, key, value );
 
@@ -342,14 +338,14 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         iter.reset( input, getBlockLength( bucket ) );
 
         //2* is a safety net here due to possibility that a value may take longer in the delta form compared to original form
-        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength + 2 * m_singleEntryLength );
+        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength +  2 * m_keySerializer.getMaxLength() +  m_valueSerializer.getMaxLength( value ) + 1 );
         final int startOutputPos = outputBlock.pos;
         final ByteArray baOutput = getByteArray2( outputBlock ) ;
 
         outputBlock.increaseEntries(); //allocate block
-        final Writer writer = getWriter().reset( baOutput );
+        final Writer<V> writer = getWriter().reset( baOutput );
 
-        double retValue = NO_VALUE;
+        V retValue = NO_VALUE;
         boolean inserted = false, updated = false;
 
         while ( iter.hasNext() )
@@ -393,11 +389,11 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
      * @param value Value
      * @return A new chain and an old value
      */
-    private UpdateResult addToChainSlow( final long bucket, final Iterator iter, final Block inputBlock,
-                                         final int inputStartOffset, final long key, final double value )
+    private UpdateResult<V> addToChainSlow( final long bucket, final Iterator<V> iter, final Block inputBlock,
+                                         final int inputStartOffset, final float key, final V value )
     {
         boolean hasKey = false;
-        double retValue = NO_VALUE;
+        V retValue = NO_VALUE;
         while ( iter.hasNext() )
         {
             iter.advance();
@@ -409,13 +405,13 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         }
         final int chainLength = iter.getBuf().position() - inputStartOffset;
         final int elems = hasKey ? iter.getElems() : iter.getElems() + 1;
-        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength + 2 * m_singleEntryLength + 2 ); //2 for transition from header to chain length
+        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength +  2 * m_keySerializer.getMaxLength() +  m_valueSerializer.getMaxLength( value ) + 2 ); //2 for transition from header to chain length
         final int startOutputPos = outputBlock.pos;
         final ByteArray output = getByteArray2( outputBlock );
 
         outputBlock.increaseEntries();//allocate block
         //here we write the correct number of elements upfront
-        final Writer writer = getWriter().reset( output, elems );
+        final Writer<V> writer = getWriter().reset( output, elems );
         boolean inserted = false;
 
         //fully reset the iterator (position on the bucket length)
@@ -452,7 +448,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
     }
 
     @Override
-    public double remove( final long key )
+    public V remove( final float key )
     {
         Buffers buffers = m_data.get();
         if ( buffers.old != null ) {
@@ -473,7 +469,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         //CAS loop
         while ( true )
         {
-            final UpdateResult res = removeKey( bucket, key );
+            final UpdateResult<V> res = removeKey( bucket, key );
             /*
              * Possible returns:
               * null - restart
@@ -493,7 +489,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
                     //commit usage changes
                     res.input.decreaseEntries();
 
-                    final double ret = res.retValue; //must be saved in case of rehash
+                    final V ret = res.retValue; //must be saved in case of rehash
                     changeSize( res.sizeChange, buffers, getBlockLength( res.chain ) );
                     return ret;
                 }
@@ -525,7 +521,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
      * @param key Key to remove
      * @return Updated or original chain
      */
-    private UpdateResult removeKey( final long bucket, final long key )
+    private UpdateResult<V> removeKey( final long bucket, final float key )
     {
         final Block inputBlock = getBlockByIndex( bucket );
         if ( inputBlock == null )
@@ -533,10 +529,10 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         final int inputStartOffset = getOffset( bucket );
 
         final ByteArray input = getByteArray( inputBlock, inputStartOffset );
-        final Iterator iter = getIterator().reset( input, getBlockLength( bucket ) );
+        final Iterator<V> iter = getIterator().reset( input, getBlockLength( bucket ) );
 
         boolean hasKey = false;
-        double retValue = NO_VALUE;
+        V retValue = NO_VALUE;
         while ( iter.hasNext() )
         {
             iter.advance();
@@ -557,11 +553,11 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         input.position( inputStartOffset );
         iter.reset( input, getBlockLength( bucket ) );
 
-        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( Math.min( chainLength, ( iter.getElems() - 1 ) * m_singleEntryLength ) );
+        final Block outputBlock = m_blockAllocator.getThreadLocalBlock( chainLength ); //todo could be optimized, we can reduce by value length safely
         final int startOutputPos = outputBlock.pos;
         final ByteArray output = getByteArray2( outputBlock );
         outputBlock.increaseEntries(); //allocate ticket
-        final Writer writer = getWriter().reset( output, iter.getElems() <= MAX_ENCODED_LENGTH ? 0 : iter.getElems() - 1 );
+        final Writer<V> writer = getWriter().reset( output, iter.getElems() <= MAX_ENCODED_LENGTH ? 0 : iter.getElems() - 1 );
         while ( iter.hasNext() )
         {
             iter.advance();
@@ -642,7 +638,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         final long[] old = buffers.old;
         final long[] dest = buffers.cur;
         final ByteArray barLocal = new ByteArray();
-        final Iterator iterLocal = new Iterator( m_keySerializer, m_valueSerializer );
+        final Iterator<V> iterLocal = new Iterator<>( m_keySerializer, m_valueSerializer );
 
         //start from random position and wrap round. It should reduce write contention
         final int startPos = ThreadLocalRandom.current().nextInt( old.length );
@@ -655,7 +651,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
                 i += old.length / CPU_NUMBER; //jump ahead to reduce contention / quickly catch up
     }
 
-    private boolean rehashInnerStep( final long[] old, final long[] dest, final ByteArray bar, final Iterator iter, final int idxOld )
+    private boolean rehashInnerStep( final long[] old, final long[] dest, final ByteArray bar, final Iterator<V> iter, final int idxOld )
     {
         final long bucket = getBucket( old, idxOld );
         //Put RELOCATED into each processed cell. This way we distinguish between not used and relocated cells.
@@ -702,13 +698,13 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
      * @param tabSize Bucket table size
      * @return Bucket index
      */
-    private int getIndex( final long key, final int tabSize )
+    private int getIndex( final float key, final int tabSize )
     {
         return Tools.getIndexFast( key, tabSize );
     }
 
 
-    private static class Iterator    {
+    private static class Iterator<V>    {
         /** Underlying byte buffer */
         private ByteArray buf;
         /** Number of entries in the bucket */
@@ -716,15 +712,15 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         /** Index of the current entry (0-based) */
         private int cur = 0;
         /** Current entry key, initialized by {@code advance} call */
-        private long key;
+        private float key;
         /** Current entry value, initialized by {@code advance} call */
-        private double value;
+        private V value;
         /** Serialization for keys */
-        private final ILongSerializer m_keySerializer;
+        private final IFloatSerializer m_keySerializer;
         /** Serialization for values */
-        private final IDoubleSerializer m_valueSerializer;
+        private final IObjectSerializer<V> m_valueSerializer;
 
-        public Iterator( final ILongSerializer keySerializer, final IDoubleSerializer valueSerializer ) {
+        public Iterator( final IFloatSerializer keySerializer, final IObjectSerializer<V> valueSerializer ) {
             m_keySerializer = keySerializer;
             m_valueSerializer = valueSerializer;
         }
@@ -735,7 +731,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
          * @param chainLength Chain length stored in the header. 0xFF triggers reading actual length from the bucket
          * @return Same iterator object
          */
-        Iterator reset( final ByteArray buf, final int chainLength )
+        Iterator<V> reset( final ByteArray buf, final int chainLength )
         {
             this.buf = buf;
             elems = chainLength != MAX_ENCODED_LENGTH ? chainLength : readUnsignedInt( buf );
@@ -757,13 +753,11 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
          */
         public void advance()
         {
-            if ( cur == 0 ) {
+            if ( cur == 0 )
                 key = m_keySerializer.read( buf );
-                value = m_valueSerializer.read( buf );
-            } else {
+            else
                 key = m_keySerializer.readDelta( key, buf, true );
-                value = m_valueSerializer.readDelta( value, buf, false );
-            }
+            value = m_valueSerializer.read( buf );
             ++cur;
         }
 
@@ -780,14 +774,14 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         /**
          * @return A key read by the last {@code advance} call
          */
-        public long getKey() {
+        public float getKey() {
             return key;
         }
 
         /**
          * @return A value read by the last {@code advance} call
          */
-        public double getValue() {
+        public V getValue() {
             return value;
         }
 
@@ -807,21 +801,19 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
     /**
      * This class encapsulates the logic used to write all entries into the bucket.
      */
-    private static final class Writer    {
+    private static final class Writer<V>    {
         /** Underlying byte buffer */
         private ByteArray buf;
         /** Is this a first entry (used for delta encoding) */
         private boolean first = true;
         /** Previously written key (used for delta encoding) */
-        private long prevKey = 0;
-        /** Previously written value (used for delta encoding) */
-        private double prevValue = 0;
+        private float prevKey = 0;
         /** Serialization for keys */
-        private final ILongSerializer m_keySerializer;
+        private final IFloatSerializer m_keySerializer;
         /** Serialization for values */
-        private final IDoubleSerializer m_valueSerializer;
+        private final IObjectSerializer<V> m_valueSerializer;
 
-        public Writer( final ILongSerializer keySerializer, final IDoubleSerializer valueSerializer)
+        public Writer( final IFloatSerializer keySerializer, final IObjectSerializer<V> valueSerializer)
         {
             m_keySerializer = keySerializer;
             m_valueSerializer = valueSerializer;
@@ -833,7 +825,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
          * @param buf Underlying byte buffer
          * @return this
          */
-        public Writer reset( final ByteArray buf )
+        public Writer<V> reset( final ByteArray buf )
         {
             return reset( buf, 0 );
         }
@@ -844,14 +836,13 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
          * @param elems Number of elements to write, don't write anything if this value is not positive
          * @return this
          */
-        public Writer reset( final ByteArray buf, final int elems )
+        public Writer<V> reset( final ByteArray buf, final int elems )
         {
             this.buf = buf;
             if ( elems > 0 )
                 writeUnsignedInt( elems, buf );
             first = true;
             prevKey = 0;
-            prevValue = 0;
             return this;
         }
 
@@ -860,22 +851,19 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
          * @param k Key to write
          * @param v Value to write
          */
-        public void writePair( final long k, final double v )
+        public void writePair( final float k, final V v )
         {
             if ( first ) {
                 m_keySerializer.write( k, buf );
-                m_valueSerializer.write( v, buf );
                 first = false;
             }
             else
             {
                 //keys are sorted, so we can write unsigned diff (but serializer will make a final decision)
                 m_keySerializer.writeDelta( prevKey, k, buf, true );
-                //values are NOT sorted
-                m_valueSerializer.writeDelta( prevValue, v, buf, false );
             }
+            m_valueSerializer.write( v, buf );
             prevKey = k;
-            prevValue = v;
         }
     }
 
@@ -916,11 +904,11 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
      * Get a thread local iterator. Iterators do not depend on any inner map fields, so they could be safely used on per-thread basis.
      * @return A cached iterator object
      */
-    private Iterator getIterator()
+    private Iterator<V> getIterator()
     {
-        Iterator res = s_iters.get();
+        Iterator<V> res = s_iters.get();
         if ( res == null )
-            s_iters.set( res = new Iterator( m_keySerializer, m_valueSerializer ) );
+            s_iters.set( res = new Iterator<>( m_keySerializer, m_valueSerializer ) );
         return res;
     }
 
@@ -928,15 +916,15 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
      * Get a cached writer for the current thread
      * @return A cached writer for the current thread
      */
-    private Writer getWriter()
+    private Writer<V> getWriter()
     {
-        Writer w = s_writers.get();
+        Writer<V> w = s_writers.get();
         if ( w == null )
-            s_writers.set( w = new Writer( m_keySerializer, m_valueSerializer ) );
+            s_writers.set( w = new Writer<>( m_keySerializer, m_valueSerializer ) );
         return w;
     }
 
-    private UpdateResult getUpdateResult()
+    private UpdateResult<V> getUpdateResult()
     {
         return s_updateRes.get();
     }
@@ -946,9 +934,9 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
      * to commit/rollback these changes using CAS. An instance is always written and then read by the same
      * thread, so no synchronization is needed.
      */
-    private static class UpdateResult    {
+    private static class UpdateResult<V>    {
         public long chain;
-        public double retValue;
+        public V retValue;
         public int sizeChange;
         public Block input;
         public Block output;
@@ -957,7 +945,7 @@ public class LongDoubleConcurrentChainedMap implements ILongDoubleConcurrentMap{
         public UpdateResult() {
         }
 
-        public UpdateResult set( long chain, double retValue, int sizeChange, Block input, Block output, int outputPrevStart )
+        public UpdateResult<V> set( long chain, V retValue, int sizeChange, Block input, Block output, int outputPrevStart )
         {
             this.chain = chain;
             this.retValue = retValue;

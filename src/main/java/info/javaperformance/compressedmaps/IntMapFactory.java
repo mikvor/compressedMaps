@@ -92,7 +92,7 @@ public class IntMapFactory
 
     public static <V> IIntObjectMap<V> singleThreadedIntObjectMap( final long size, final float fillFactor, final IObjectSerializer<V> valueSerializer )
     {
-        return new IntObjectChainedMap<V>( size, fillFactor,
+        return new IntObjectChainedMap<>( size, fillFactor,
             DefaultIntSerializer.INSTANCE, valueSerializer, SingleThreadedBlockAllocator.DEFAULT_RECYCLE_BOUND );
     }
 
@@ -100,51 +100,71 @@ public class IntMapFactory
                                                    final IIntSerializer keySerializer, final IObjectSerializer<V> valueSerializer,
                                                    final long blockCacheLimit )
     {
-        return new IntObjectChainedMap<V>( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
+        return new IntObjectChainedMap<>( size, fillFactor, keySerializer, valueSerializer, blockCacheLimit );
     }
 
     /////////////////////////////////////////////////////////////
     //  Concurrent maps
     /////////////////////////////////////////////////////////////
+
     public static IIntIntConcurrentMap concurrentIntIntMap( final long size, final float fillFactor )
     {
         return new IntIntConcurrentChainedMap( size, fillFactor, DefaultIntSerializer.INSTANCE, DefaultIntSerializer.INSTANCE );
     }
 
-    public static IIntIntConcurrentMap concurrentIntIntMap( final long size, final float fillFactor,
-                                                         final IIntSerializer keySerializer, final IIntSerializer valueSerializer )
+    public static  IIntIntConcurrentMap concurrentIntIntMap( final long size, final float fillFactor,
+                                                         final IIntSerializer keySerializer,
+                                                         final IIntSerializer valueSerializer )
     {
         return new IntIntConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
+
     public static IIntLongConcurrentMap concurrentIntLongMap( final long size, final float fillFactor )
     {
         return new IntLongConcurrentChainedMap( size, fillFactor, DefaultIntSerializer.INSTANCE, DefaultLongSerializer.INSTANCE );
     }
 
-    public static IIntLongConcurrentMap concurrentIntLongMap( final long size, final float fillFactor,
-                                                         final IIntSerializer keySerializer, final ILongSerializer valueSerializer )
+    public static  IIntLongConcurrentMap concurrentIntLongMap( final long size, final float fillFactor,
+                                                         final IIntSerializer keySerializer,
+                                                         final ILongSerializer valueSerializer )
     {
         return new IntLongConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
+
     public static IIntFloatConcurrentMap concurrentIntFloatMap( final long size, final float fillFactor )
     {
         return new IntFloatConcurrentChainedMap( size, fillFactor, DefaultIntSerializer.INSTANCE, DefaultFloatSerializer.INSTANCE );
     }
 
-    public static IIntFloatConcurrentMap concurrentIntFloatMap( final long size, final float fillFactor,
-                                                         final IIntSerializer keySerializer, final IFloatSerializer valueSerializer )
+    public static  IIntFloatConcurrentMap concurrentIntFloatMap( final long size, final float fillFactor,
+                                                         final IIntSerializer keySerializer,
+                                                         final IFloatSerializer valueSerializer )
     {
         return new IntFloatConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
     }
+
     public static IIntDoubleConcurrentMap concurrentIntDoubleMap( final long size, final float fillFactor )
     {
         return new IntDoubleConcurrentChainedMap( size, fillFactor, DefaultIntSerializer.INSTANCE, DefaultDoubleSerializer.INSTANCE );
     }
 
-    public static IIntDoubleConcurrentMap concurrentIntDoubleMap( final long size, final float fillFactor,
-                                                         final IIntSerializer keySerializer, final IDoubleSerializer valueSerializer )
+    public static  IIntDoubleConcurrentMap concurrentIntDoubleMap( final long size, final float fillFactor,
+                                                         final IIntSerializer keySerializer,
+                                                         final IDoubleSerializer valueSerializer )
     {
         return new IntDoubleConcurrentChainedMap( size, fillFactor, keySerializer, valueSerializer );
+    }
+
+    public static <V> IIntObjectConcurrentMap<V> concurrentIntObjectMap( final long size, final float fillFactor, final IObjectSerializer<V> valueSerializer )
+    {
+        return new IntObjectConcurrentChainedMap<>( size, fillFactor, DefaultIntSerializer.INSTANCE, valueSerializer );
+    }
+
+    public static <V> IIntObjectConcurrentMap<V> concurrentIntObjectMap( final long size, final float fillFactor,
+                                                         final IIntSerializer keySerializer,
+                                                         final IObjectSerializer<V> valueSerializer )
+    {
+        return new IntObjectConcurrentChainedMap<>( size, fillFactor, keySerializer, valueSerializer );
     }
 
 }
