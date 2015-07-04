@@ -33,7 +33,7 @@ public class IntIntConcurrentChainedMapTest extends TestCase
     private static final int TWO = 2 ;
     private static final int NOT_PRESENT = 0;
 
-    private static final float[] FF = { 0.5f, 1, 5 };
+    private static final float[] FF = { 0.5f, 1, 5, 16 };
     private static final int[] THREADS = { 1, 2, 4, 8, 16, 32 };
 
 
