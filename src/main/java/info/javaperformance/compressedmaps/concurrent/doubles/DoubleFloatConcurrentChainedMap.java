@@ -186,19 +186,11 @@ public class DoubleFloatConcurrentChainedMap implements IDoubleFloatConcurrentMa
             return get( key );
         }
 
-        final Block input = getBlockByIndex(bucket);
+        final Block input = getBlockByIndex( bucket );
         if ( input == null )
             return get( key ); //someone has relocated the data from this block, need to retry because we have a valid bucket
 
-        final Iterator iter = getIterator().reset( getByteArray( input, getOffset( bucket ) ), getBlockLength( bucket ) );
-        while ( iter.hasNext() ) {
-            iter.advance();
-            if ( iter.getKey() == key )
-                return iter.getValue();
-            else if ( iter.getKey() > key ) //keys are sorted
-                return NO_VALUE;
-        }
-        return NO_VALUE;
+        return getIterator().reset( getByteArray( input, getOffset( bucket ) ), getBlockLength( bucket ) ).findKey( key, NO_VALUE );
     }
 
     @Override
@@ -235,11 +227,11 @@ public class DoubleFloatConcurrentChainedMap implements IDoubleFloatConcurrentMa
             if ( res != null && compareAndSet( buffers.cur, idx, bucket, res.chain ) )
             {
                 //commit usage changes to input block (output already updated)
-                if (res.input != null) //could be null for new bucket
+                if ( res.input != null ) //could be null for new bucket
                     res.input.decreaseEntries();
 
                 final float ret = res.retValue; //must be saved in case of rehash
-                changeSize(res.sizeChange, buffers, getBlockLength( res.chain ) );
+                changeSize( res.sizeChange, buffers, getBlockLength( res.chain ) );
                 return ret;
             }
             else {
@@ -753,18 +745,53 @@ public class DoubleFloatConcurrentChainedMap implements IDoubleFloatConcurrentMa
         }
 
         /**
-         * Read the next entry from the buffer
-         */
+        * Read the next entry from the buffer
+        */
         public void advance()
+        {
+            advance( true );
+        }
+
+        private void advance( final boolean readValue )
         {
             if ( cur == 0 ) {
                 key = m_keySerializer.read( buf );
-                value = m_valueSerializer.read( buf );
+                if ( readValue )
+                    value = m_valueSerializer.read( buf );
             } else {
                 key = m_keySerializer.readDelta( key, buf, true );
-                value = m_valueSerializer.readDelta( value, buf, false );
+                if ( readValue )
+                    value = m_valueSerializer.readDelta( value, buf, false );
             }
             ++cur;
+        }
+
+        /**
+        * method for looking up a value for a given key.
+        * @param key Key to look up
+        * @param noValue Value to return in case of failure
+        * @return Found value or {@code noValue}
+        */
+        public float findKey( final double key, final float noValue )
+        {
+            while ( hasNext() ) {
+                advance();
+                if ( getKey() == key )
+                    return getValue();
+                else if ( getKey() > key ) //keys are sorted
+                    return noValue;
+            }
+            return noValue;
+        }
+
+        public void skipValue()
+        {
+            m_valueSerializer.skip( buf );
+        }
+
+        public float readValue()
+        {
+            return ( value = m_valueSerializer.read( buf ) );
         }
 
         /**
@@ -773,7 +800,7 @@ public class DoubleFloatConcurrentChainedMap implements IDoubleFloatConcurrentMa
         public void skip()
         {
             m_keySerializer.skip( buf );
-            m_valueSerializer.skip( buf );
+            skipValue();
             ++cur;
         }
 
