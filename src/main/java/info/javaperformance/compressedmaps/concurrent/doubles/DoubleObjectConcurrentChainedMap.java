@@ -386,14 +386,24 @@ public class DoubleObjectConcurrentChainedMap<V> implements IDoubleObjectConcurr
     {
         boolean hasKey = false;
         V retValue = NO_VALUE;
-        while ( iter.hasNext() )
+        while ( iter.hasNext() ) //look up a key and then fast forward to the end of chain to find out its length
         {
-            iter.advance();
+            iter.advance( false );
             if ( iter.getKey() == key )
             {
                 hasKey = true;
-                retValue = iter.getValue();
+                retValue = iter.readValue();
+                while ( iter.hasNext() )
+                    iter.skip();
             }
+            else if ( iter.getKey() > key )
+            {
+                iter.skipValue();
+                while ( iter.hasNext() )
+                    iter.skip();
+            }
+            else
+                iter.skipValue();
         }
         final int chainLength = iter.getBuf().position() - inputStartOffset;
         final int elems = hasKey ? iter.getElems() : iter.getElems() + 1;
@@ -412,13 +422,13 @@ public class DoubleObjectConcurrentChainedMap<V> implements IDoubleObjectConcurr
 
         while ( iter.hasNext() )
         {
-            iter.advance();
+            iter.advance( false );
             if ( iter.getKey() < key )
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             else if ( iter.getKey() == key )
             {
                 inserted = true;
-                retValue = iter.getValue();
+                retValue = iter.readValue();
                 writer.writePair( key, value );
             }
             else
@@ -428,7 +438,7 @@ public class DoubleObjectConcurrentChainedMap<V> implements IDoubleObjectConcurr
                     inserted = true;
                     writer.writePair( key, value );
                 }
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             }
         }
         if ( !inserted ) //all keys are smaller

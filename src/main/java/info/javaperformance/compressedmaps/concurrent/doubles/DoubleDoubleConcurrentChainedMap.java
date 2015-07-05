@@ -390,13 +390,20 @@ public class DoubleDoubleConcurrentChainedMap implements IDoubleDoubleConcurrent
     {
         boolean hasKey = false;
         double retValue = NO_VALUE;
-        while ( iter.hasNext() )
+        while ( iter.hasNext() ) //look up a key and then fast forward to the end of chain to find out its length
         {
             iter.advance();
             if ( iter.getKey() == key )
             {
                 hasKey = true;
                 retValue = iter.getValue();
+                while ( iter.hasNext() )
+                    iter.skip();
+            }
+            else if ( iter.getKey() > key )
+            {
+                while ( iter.hasNext() )
+                    iter.skip();
             }
         }
         final int chainLength = iter.getBuf().position() - inputStartOffset;
@@ -418,7 +425,7 @@ public class DoubleDoubleConcurrentChainedMap implements IDoubleDoubleConcurrent
         {
             iter.advance();
             if ( iter.getKey() < key )
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             else if ( iter.getKey() == key )
             {
                 inserted = true;
@@ -432,7 +439,7 @@ public class DoubleDoubleConcurrentChainedMap implements IDoubleDoubleConcurrent
                     inserted = true;
                     writer.writePair( key, value );
                 }
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             }
         }
         if ( !inserted ) //all keys are smaller
