@@ -39,13 +39,6 @@ import static info.javaperformance.buckets.LongBucketEncoding.*;
 import static info.javaperformance.tools.VarLen.readUnsignedInt;
 import static info.javaperformance.tools.VarLen.writeUnsignedInt;
 
-/*
-todo
-1) check what's retained in the helper objects in ThreadLocals
-2) check if we properly clean the blocks
-3) BlockMap
- */
-
 /**
  * A primitive concurrent hash map.
  * It is built on top of a collection of memory blocks managed by {@code ConcurrentBlockAllocator}. We use same serializers
