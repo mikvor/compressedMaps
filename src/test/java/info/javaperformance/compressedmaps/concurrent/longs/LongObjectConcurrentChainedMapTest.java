@@ -21,9 +21,9 @@ package info.javaperformance.compressedmaps.concurrent.longs;
 
 import info.javaperformance.compressedmaps.LongMapFactory;
 import info.javaperformance.serializers.GenericStringSerializer;
-import java.nio.charset.StandardCharsets;
 import junit.framework.TestCase;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 

@@ -21,9 +21,9 @@ package info.javaperformance.compressedmaps.concurrent.doubles;
 
 import info.javaperformance.compressedmaps.DoubleMapFactory;
 import info.javaperformance.serializers.GenericStringSerializer;
-import java.nio.charset.StandardCharsets;
 import junit.framework.TestCase;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 

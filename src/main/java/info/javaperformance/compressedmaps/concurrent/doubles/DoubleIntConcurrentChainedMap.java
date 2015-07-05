@@ -348,7 +348,7 @@ public class DoubleIntConcurrentChainedMap implements IDoubleIntConcurrentMap{
         {
             iter.advance();
             if ( iter.getKey() < key )
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             else if ( iter.getKey() == key )
             {
                 inserted = true;
@@ -363,7 +363,7 @@ public class DoubleIntConcurrentChainedMap implements IDoubleIntConcurrentMap{
                     inserted = true;
                     writer.writePair( key, value );
                 }
-                writer.writePair( iter.getKey(), iter.getValue() );
+                writer.transferPair( iter );
             }
         }
         if ( !inserted ) //all keys are smaller
@@ -904,6 +904,17 @@ public class DoubleIntConcurrentChainedMap implements IDoubleIntConcurrentMap{
             prevKey = k;
             prevValue = v;
         }
+
+        /**
+        * Helper method to transfer an entry from iterator to writer.
+        * We always take the iterator key as a key.
+        * @param iter Iterator standing prior to a value
+        */
+        public void transferPair( final Iterator iter )
+        {
+            writePair( iter.getKey(), iter.getValue() );
+        }
+
     }
 
     private static ByteArray getByteArray( final ThreadLocal<ByteArray> tba, final Block ar )
