@@ -535,14 +535,24 @@ public class DoubleObjectConcurrentChainedMap<V> implements IDoubleObjectConcurr
 
         boolean hasKey = false;
         V retValue = NO_VALUE;
-        while ( iter.hasNext() )
+        while ( iter.hasNext() ) //look up a key and then fast forward to the end of chain to find out its length
         {
-            iter.advance();
+            iter.advance( false );
             if ( iter.getKey() == key )
             {
                 hasKey = true;
-                retValue = iter.getValue();
+                retValue = iter.readValue();
+                while ( iter.hasNext() )
+                    iter.skip();
             }
+            else if ( iter.getKey() > key )
+            {
+                iter.skipValue();
+                while ( iter.hasNext() )
+                    iter.skip();
+            }
+            else
+                iter.skipValue();
         }
         if ( !hasKey )
             return getUpdateResult().set( bucket, NO_VALUE, 0, null, null, 0 );
@@ -562,10 +572,12 @@ public class DoubleObjectConcurrentChainedMap<V> implements IDoubleObjectConcurr
         final Writer<V> writer = getWriter().reset( output, iter.getElems() <= MAX_ENCODED_LENGTH ? 0 : iter.getElems() - 1 );
         while ( iter.hasNext() )
         {
-            iter.advance();
+            iter.advance( false );
             if ( iter.getKey() != key )
-                writer.writePair( iter.getKey(), iter.getValue() );
-        }
+                writer.transferPair( iter );
+            else
+                iter.skipValue();
+            }
 
         outputBlock.pos = output.position();
         return getUpdateResult().set( pack( outputBlock.index, startOutputPos,

@@ -536,13 +536,20 @@ public class LongLongConcurrentChainedMap implements ILongLongConcurrentMap{
 
         boolean hasKey = false;
         long retValue = NO_VALUE;
-        while ( iter.hasNext() )
+        while ( iter.hasNext() ) //look up a key and then fast forward to the end of chain to find out its length
         {
             iter.advance();
             if ( iter.getKey() == key )
             {
                 hasKey = true;
                 retValue = iter.getValue();
+                while ( iter.hasNext() )
+                    iter.skip();
+            }
+            else if ( iter.getKey() > key )
+            {
+                while ( iter.hasNext() )
+                    iter.skip();
             }
         }
         if ( !hasKey )
@@ -565,8 +572,8 @@ public class LongLongConcurrentChainedMap implements ILongLongConcurrentMap{
         {
             iter.advance();
             if ( iter.getKey() != key )
-                writer.writePair( iter.getKey(), iter.getValue() );
-        }
+                writer.transferPair( iter );
+            }
 
         outputBlock.pos = output.position();
         return getUpdateResult().set( pack( outputBlock.index, startOutputPos,
