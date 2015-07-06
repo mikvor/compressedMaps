@@ -25,7 +25,12 @@ import info.javaperformance.tools.ConcurrentIntObjectMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Memory block allocator for concurrent maps
+ * Memory block allocator for concurrent maps.
+ *
+ * We can not implement block caching without adding reader counter/lock support to Block class.
+ * Without it we may start reusing a removed block while there is still a reader trying to process already relocated
+ * chain. This also means that the Block byte array must not be updated after a block is removed from an allocator.
+ * Try filling the block byte array with FF in {@code removeBlock} to see the impact of reusing a block.
  */
 public class ConcurrentBlockAllocator {
     /** Data blocks are stored here */
