@@ -59,10 +59,10 @@ public class IntObjectConcurrentChainedMapTest extends TestCase
         final int SECTION = PUT_MAP_SIZE / threads;
         //initial insertion section
         {
-            final CountDownLatch start = new CountDownLatch(threads);
-            final CountDownLatch end = new CountDownLatch(threads);
-            for (int i = 0; i < threads; ++i) {
-                final Thread t = new Thread(new Adder(i * SECTION, (i + 1) * SECTION, start, end, map));
+            final CountDownLatch start = new CountDownLatch( threads );
+            final CountDownLatch end = new CountDownLatch( threads );
+            for ( int i = 0; i < threads; ++i ) {
+                final Thread t = new Thread( new Adder(i * SECTION, ( i + 1 ) * SECTION, start, end, map ) );
                 t.start();
             }
             //wait for the completion
@@ -78,7 +78,7 @@ public class IntObjectConcurrentChainedMapTest extends TestCase
             final CountDownLatch start = new CountDownLatch( threads );
             final CountDownLatch end = new CountDownLatch( threads );
             for ( int i = 0; i < threads; ++i ) {
-                final Thread t = new Thread(new Updater( i * SECTION, (i + 1) * SECTION, start, end, map ) );
+                final Thread t = new Thread( new Updater( i * SECTION, (i + 1) * SECTION, start, end, map ) );
                 t.start();
             }
             //wait for the completion
@@ -116,7 +116,7 @@ public class IntObjectConcurrentChainedMapTest extends TestCase
                     assertEquals( NOT_PRESENT, m_map.put( n, String.valueOf( n ) ) );
                     assertEquals( String.valueOf( n ), m_map.get( n ) );
                 }
-            } catch (Throwable e) {
+            } catch ( Throwable e ) {
                 e.printStackTrace();
             }
             m_endGate.countDown();
@@ -148,7 +148,7 @@ public class IntObjectConcurrentChainedMapTest extends TestCase
                     assertEquals( String.valueOf( n ), m_map.put( n, ONE ) );
                     assertEquals( ONE, m_map.get( n ) );
                 }
-            } catch (Throwable e) {
+            } catch ( Throwable e ) {
                 e.printStackTrace();
             }
             m_endGate.countDown();
@@ -191,6 +191,8 @@ public class IntObjectConcurrentChainedMapTest extends TestCase
                 add += 2;
                 remove++;
             }
+            while ( add > ( i + 1 ) * SECTION )
+                --add;
 
             totalSize += add - remove;
             for ( int j = remove; j < add; ++j )
@@ -239,8 +241,10 @@ public class IntObjectConcurrentChainedMapTest extends TestCase
                 {
                     assertEquals( NOT_PRESENT, m_map.put( add, ONE ) );
                     assertEquals( ONE, m_map.get( add++ ) );
-                    assertEquals( NOT_PRESENT, m_map.put( add, ONE ) );
-                    assertEquals( ONE, m_map.get( add++ ) );
+                    if ( add < m_to ) {
+                        assertEquals( NOT_PRESENT, m_map.put( add, ONE ) );
+                        assertEquals( ONE, m_map.get( add++ ) );
+                    }
                     assertEquals( ONE, m_map.remove( remove++ ) );
                 }
 
@@ -248,7 +252,7 @@ public class IntObjectConcurrentChainedMapTest extends TestCase
                     assertEquals( ONE, m_map.put( n, TWO ) );
                     assertEquals( TWO, m_map.get( n ) );
                 }
-            } catch (Throwable e) {
+            } catch ( Throwable e ) {
                 e.printStackTrace();
             }
             m_endGate.countDown();
@@ -280,7 +284,7 @@ public class IntObjectConcurrentChainedMapTest extends TestCase
                     m_map.remove( n );
                 for ( int n = m_from; n < m_to; ++n )
                     assertEquals( NOT_PRESENT, m_map.remove( n ) );
-            } catch (Throwable e) {
+            } catch ( Throwable e ) {
                 e.printStackTrace();
             }
             m_endGate.countDown();
